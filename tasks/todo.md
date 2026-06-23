@@ -57,7 +57,9 @@
 - 教训：Snapzy CreatedOnToolsVersion=26.2，必须 Xcode 26.x(Swift 6.2，因 SWIFT_DEFAULT_ACTOR_ISOLATION=MainActor)；16.4 死路（试了 8 次编译/降级/minimal/借toolchain 全失败）
 
 ### 下一步：开始一期功能开发（每步先描述方法→批准→写码→编译跑→截图验证）
-1. 露脸摄像头 bubble（仿 MouseClickHighlightWindow，AVCaptureSession + 圆形浮窗 + addExceptedWindow 让它录进去）
+1. ✅ 露脸摄像头 bubble（圆形浮窗 + 实时摄像头画面，界面验证 2026-06-23）— 文件:Features/Camera/CameraCaptureService.swift + CameraBubbleWindow.swift + SnapzyApp.swift挂载
+   ⚠️ 运行要点:未签名app摄像头被TCC拒绝(黑屏),必须 `codesign --force --deep --sign - "<app>"` 做ad-hoc签名后才弹权限/出画面
+   还需:集成进录制(addExceptedWindow让它录进去)、可调大小/位置记忆、关闭按钮
 2. 基础美颜（Metal 磨皮/美白）
 3. 隐形提词器（浮窗 + 不加 exceptedWindow = 录不进去）
 4. 全程"先英文后中文"文案

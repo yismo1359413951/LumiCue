@@ -72,6 +72,7 @@ struct AppLaunchPolicy {
 class AppDelegate: NSObject, NSApplicationDelegate {
   private let launchPolicyProvider: () -> AppLaunchPolicy
   private var coordinator: AppCoordinator?
+  private var cameraBubble: CameraBubbleWindow?  // 靓相 Shotlit: 露脸摄像头浮窗
   private var pendingDeepLinkURLs: [URL] = []
   private var pendingOpenFileURLs: [URL] = []
   private var didFinishLaunching = false
@@ -119,6 +120,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     didFinishLaunching = true
     flushPendingDeepLinks()
     flushPendingOpenFileURLs()
+
+    // 靓相 Shotlit: 显示露脸摄像头 bubble (一期验证)
+    let bubble = CameraBubbleWindow()
+    bubble.show()
+    cameraBubble = bubble
   }
 
   func applicationWillTerminate(_ notification: Notification) {

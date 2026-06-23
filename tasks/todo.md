@@ -48,10 +48,19 @@
   - 版本依据（已查证）：本机 macOS 15.7.7 最高可装 Xcode 26.3（要 15.6+）；Snapzy 只要 macOS 13+/Swift 5，故 Xcode 16.4（要 15.3+）足够且更省磁盘
 - [x] 磁盘清理：已删 swift-6.3.2.pkg + WeChat.dmg + 部分缓存，48G→56G（保留 ms-playwright 爬虫浏览器）
 
-### 装好 Xcode 后立刻做
-1. `sudo xcode-select -s /Applications/Xcode.app` 切换工具链
-2. `xcodebuild -project snapzy/Snapzy.xcodeproj -scheme Snapzy build` 验证基座能否原生构建跑通（截图为证）
-3. 跑起来录一段，确认基座录屏正常 → 才开始加摄像头/美颜/提词器
+### ✅ 基座已编译+运行通过（2026-06-23，界面验证·截图为证）
+- Xcode 26.3 (build 17C529) 已装，xcode-select 已指向；旧的 16.4 已被替换
+- 🔴 正确编译命令（在 snapzy/ 目录，否则满盘 MainActor 隔离错）：
+  `xcodebuild -project Snapzy.xcodeproj -scheme Snapzy -configuration Debug -derivedDataPath /tmp/snapzy-build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build`
+- 产物：`/tmp/snapzy-build/Build/Products/Debug/Snapzy Debug.app`
+- 运行验证：`open` 后中文欢迎窗口正常弹出（菜单栏 app），进程在跑
+- 教训：Snapzy CreatedOnToolsVersion=26.2，必须 Xcode 26.x(Swift 6.2，因 SWIFT_DEFAULT_ACTOR_ISOLATION=MainActor)；16.4 死路（试了 8 次编译/降级/minimal/借toolchain 全失败）
+
+### 下一步：开始一期功能开发（每步先描述方法→批准→写码→编译跑→截图验证）
+1. 露脸摄像头 bubble（仿 MouseClickHighlightWindow，AVCaptureSession + 圆形浮窗 + addExceptedWindow 让它录进去）
+2. 基础美颜（Metal 磨皮/美白）
+3. 隐形提词器（浮窗 + 不加 exceptedWindow = 录不进去）
+4. 全程"先英文后中文"文案
 
 ---
 

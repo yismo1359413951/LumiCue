@@ -1,0 +1,16 @@
+.claude
+.agent1
+
+sparkle_private_key.pem
+
+# Packages/**/*.build
+.build
+/build
+
+# Secrets - never commit
+Snapzy/Config/Secrets.xcconfig
+*.xcuserstate
+
+/plans
+
+.codex

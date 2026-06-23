@@ -43,8 +43,10 @@
 - [x] 确认摄像头需新建（基座仅麦克风音频）
 
 ### 🔴 阻塞中（关键路径）
-- [ ] **用户装完整 Xcode**（App Store，~15G，1-3 小时）→ 没它无法构建 macOS app
-- [ ] 磁盘偏紧（约 45G 可用），建议清理出 ≥60G
+- [ ] **装 Xcode 16.4**（⚠️ 不能用 App Store！它只给最新 Xcode 26.4，要 macOS 26.2，本机 15.7.7 装不了）
+  - 正确方式：developer.apple.com/download/all 用免费 Apple ID 登录 → 下 Xcode 16.4 的 .xip（~8G）→ 解压拖进"应用程序"
+  - 版本依据（已查证）：本机 macOS 15.7.7 最高可装 Xcode 26.3（要 15.6+）；Snapzy 只要 macOS 13+/Swift 5，故 Xcode 16.4（要 15.3+）足够且更省磁盘
+- [x] 磁盘清理：已删 swift-6.3.2.pkg + WeChat.dmg + 部分缓存，48G→56G（保留 ms-playwright 爬虫浏览器）
 
 ### 装好 Xcode 后立刻做
 1. `sudo xcode-select -s /Applications/Xcode.app` 切换工具链

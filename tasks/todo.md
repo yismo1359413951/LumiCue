@@ -60,6 +60,11 @@
 1. ✅ 露脸摄像头 bubble（圆形浮窗 + 实时摄像头画面，界面验证 2026-06-23）— 文件:Features/Camera/CameraCaptureService.swift + CameraBubbleWindow.swift + SnapzyApp.swift挂载
    ⚠️ 运行要点:未签名app摄像头被TCC拒绝(黑屏),必须 `codesign --force --deep --sign - "<app>"` 做ad-hoc签名后才弹权限/出画面
    还需:集成进录制(addExceptedWindow让它录进去)、可调大小/位置记忆、关闭按钮
+1b. ✅ 异形露脸框（8 形状:圆/方/圆角/椭圆/心❤️/星/六边/三角 + 单击循环切换 + 拖动，界面验证 2026-06-23）
+    文件:Features/Camera/BubbleShape.swift + CameraBubbleWindow.swift(CAShapeLayer 遮罩)
+    坑:CALayer 坐标 Y 朝上，自定义 path 按"底 fy=0、顶 fy=1"画(否则心形上下颠倒像屁股)
+    还需:长方形(非正方形尺寸)、明确的形状选择 UI(不只单击循环)
+
 2. 基础美颜（Metal 磨皮/美白）
 3. 隐形提词器（浮窗 + 不加 exceptedWindow = 录不进去）
 4. 全程"先英文后中文"文案

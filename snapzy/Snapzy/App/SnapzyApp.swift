@@ -73,6 +73,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   private let launchPolicyProvider: () -> AppLaunchPolicy
   private var coordinator: AppCoordinator?
   private var cameraBubble: CameraBubbleWindow?  // 靓相 Shotlit: 露脸摄像头浮窗
+  private var teleprompter: TeleprompterWindow?  // 靓相 Shotlit: 隐形提词器
   private var pendingDeepLinkURLs: [URL] = []
   private var pendingOpenFileURLs: [URL] = []
   private var didFinishLaunching = false
@@ -125,6 +126,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let bubble = CameraBubbleWindow()
     bubble.show()
     cameraBubble = bubble
+
+    // 靓相 Shotlit: 显示隐形提词器 (先可见验 UI, 确认后设 hiddenFromCapture)
+    let prompter = TeleprompterWindow()
+    prompter.hiddenFromCapture = true // 隐形(已验证: ScreenCaptureKit录屏/直播截不到, 主播本地可见)
+    prompter.show()
+    teleprompter = prompter
   }
 
   func applicationWillTerminate(_ notification: Notification) {

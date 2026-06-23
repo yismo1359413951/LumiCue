@@ -119,8 +119,76 @@ final class CameraBubbleWindow: NSWindow {
 
   override func mouseUp(with event: NSEvent) {
     if !didDrag {
-      cycleShape()
+      showOptionsMenu(with: event) // 单击: 弹出选项菜单
     }
     dragStart = nil
+  }
+
+  // MARK: - 选项菜单(形状/滤镜/美颜) options popup menu
+
+  private func showOptionsMenu(with event: NSEvent) {
+    guard let view = contentView else { return }
+    let menu = NSMenu()
+
+    // 形状 Shape
+    let shapeSub = NSMenu()
+    for s in BubbleShape.allCases {
+      let item = NSMenuItem(title: s.displayName, action: #selector(pickShape(_:)), keyEquivalent: "")
+      item.target = self
+      item.representedObject = s
+      item.state = (s == shape) ? .on : .off
+      shapeSub.addItem(item)
+    }
+    let shapeItem = NSMenuItem(title: "Shape 形状", action: nil, keyEquivalent: "")
+    menu.addItem(shapeItem)
+    menu.setSubmenu(shapeSub, for: shapeItem)
+
+    // 滤镜 Filter
+    let filterSub = NSMenu()
+    for f in BeautyFilterType.allCases {
+      let item = NSMenuItem(title: f.displayName, action: #selector(pickFilter(_:)), keyEquivalent: "")
+      item.target = self
+      item.representedObject = f
+      item.state = (f == capture.beauty.filter) ? .on : .off
+      filterSub.addItem(item)
+    }
+    let filterItem = NSMenuItem(title: "Filter 滤镜", action: nil, keyEquivalent: "")
+    menu.addItem(filterItem)
+    menu.setSubmenu(filterSub, for: filterItem)
+
+    // 美颜强度 Beauty
+    let beautySub = NSMenu()
+    let presets: [(String, Float, Float)] = [
+      ("Strong 强", 0.9, 0.6), ("Medium 中", 0.7, 0.35),
+      ("Light 弱", 0.4, 0.2), ("Off 关", 0.0, 0.0),
+    ]
+    for (title, sm, wh) in presets {
+      let item = NSMenuItem(title: title, action: #selector(pickBeauty(_:)), keyEquivalent: "")
+      item.target = self
+      item.representedObject = [sm, wh]
+      beautySub.addItem(item)
+    }
+    let beautyItem = NSMenuItem(title: "Beauty 美颜", action: nil, keyEquivalent: "")
+    menu.addItem(beautyItem)
+    menu.setSubmenu(beautySub, for: beautyItem)
+
+    NSMenu.popUpContextMenu(menu, with: event, for: view)
+  }
+
+  @objc private func pickShape(_ sender: NSMenuItem) {
+    guard let s = sender.representedObject as? BubbleShape else { return }
+    shape = s
+    applyShape(rect: contentView?.bounds ?? NSRect(origin: .zero, size: frame.size))
+  }
+
+  @objc private func pickFilter(_ sender: NSMenuItem) {
+    guard let f = sender.representedObject as? BeautyFilterType else { return }
+    capture.beauty.filter = f
+  }
+
+  @objc private func pickBeauty(_ sender: NSMenuItem) {
+    guard let v = sender.representedObject as? [Float], v.count == 2 else { return }
+    capture.beauty.smoothing = v[0]
+    capture.beauty.whitening = v[1]
   }
 }

@@ -15,7 +15,7 @@ final class CameraCaptureService: NSObject {
   let session = AVCaptureSession()
   private let output = AVCaptureVideoDataOutput()
   private let videoQueue = DispatchQueue(label: "shotlit.camera.video")
-  nonisolated let beauty = BeautyProcessor()
+  nonisolated let beauty = MetalBeautyRenderer()
   private var isConfigured = false
 
   /// Called on the main actor with each processed frame. 每帧处理后在主线程回调。

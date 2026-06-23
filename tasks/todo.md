@@ -65,7 +65,8 @@
     坑:CALayer 坐标 Y 朝上，自定义 path 按"底 fy=0、顶 fy=1"画(否则心形上下颠倒像屁股)
     还需:长方形(非正方形尺寸)、明确的形状选择 UI(不只单击循环)
 
-2. 基础美颜（Metal 磨皮/美白）
+2. ⚠️ 基础美颜 — Core Image 方案失败(雾蒙蒙,2026-06-23)，已暂关(smoothing/whitening=0)。
+   🔴 明天正解:移植 AwemeLike `FaceFilter/` 的 GPUImage 磨皮(双边滤波+高反差保留+肤色检测)到 Metal shader，做美颜相机级效果。**先吃透开源 shader 再写，别再用通用API凑合**。
 3. 隐形提词器（浮窗 + 不加 exceptedWindow = 录不进去）
 4. 全程"先英文后中文"文案
 

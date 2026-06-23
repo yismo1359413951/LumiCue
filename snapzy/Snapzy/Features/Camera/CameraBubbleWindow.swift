@@ -3,19 +3,20 @@
 //  Snapzy (靓相 Shotlit)
 //
 //  Face bubble 露脸画中画浮窗 — shaped (circle/heart/star/...), draggable,
-//  single-click to cycle shape. Transparent borderless NSWindow that mirrors
-//  the overlay-window pattern so it can later be captured into recordings.
+//  single-click to cycle shape, shows the beauty-processed camera frames.
 //
 
 import AppKit
 
-/// A shaped, draggable webcam bubble window. 可换形状、可拖动的露脸浮窗。
+/// A shaped, draggable webcam bubble showing beauty-processed frames.
+/// 可换形状、可拖动、显示美颜后画面的露脸浮窗。
 @MainActor
 final class CameraBubbleWindow: NSWindow {
   private let capture = CameraCaptureService()
   private(set) var shape: BubbleShape
 
   private let previewHost = CALayer()
+  private let displayLayer = CALayer()
   private let maskLayer = CAShapeLayer()
   private let borderLayer = CAShapeLayer()
 
@@ -37,11 +38,12 @@ final class CameraBubbleWindow: NSWindow {
     content.wantsLayer = true
     contentView = content
 
-    // Camera画面容器(被形状 mask 裁剪) preview host clipped to the shape
+    // 画面层(显示美颜后每帧, 被形状 mask 裁剪) processed-frame layer, clipped to shape
     previewHost.frame = rect
-    let preview = capture.previewLayer
-    preview.frame = rect
-    previewHost.addSublayer(preview)
+    displayLayer.frame = rect
+    displayLayer.contentsGravity = .resizeAspectFill
+    displayLayer.backgroundColor = NSColor.black.cgColor
+    previewHost.addSublayer(displayLayer)
     previewHost.mask = maskLayer
     content.layer?.addSublayer(previewHost)
 
@@ -52,6 +54,15 @@ final class CameraBubbleWindow: NSWindow {
     content.layer?.addSublayer(borderLayer)
 
     applyShape(rect: rect)
+
+    // 每帧更新显示(禁隐式动画) update each frame, no implicit animation
+    capture.onFrame = { [weak displayLayer] cgImage in
+      guard let displayLayer else { return }
+      CATransaction.begin()
+      CATransaction.setDisableActions(true)
+      displayLayer.contents = cgImage
+      CATransaction.commit()
+    }
     capture.start()
   }
 
@@ -69,6 +80,12 @@ final class CameraBubbleWindow: NSWindow {
     }
     let rect = contentView?.bounds ?? NSRect(origin: .zero, size: frame.size)
     applyShape(rect: rect)
+  }
+
+  /// Adjust beauty strength. 调节美颜强度。
+  func setBeauty(smoothing: Float, whitening: Float) {
+    capture.beauty.smoothing = smoothing
+    capture.beauty.whitening = whitening
   }
 
   /// Show at the bottom-right corner. 显示在屏幕右下角。
@@ -102,7 +119,7 @@ final class CameraBubbleWindow: NSWindow {
 
   override func mouseUp(with event: NSEvent) {
     if !didDrag {
-      cycleShape() // 单击切换形状
+      cycleShape()
     }
     dragStart = nil
   }

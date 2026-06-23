@@ -2,26 +2,25 @@
 //  CameraCaptureService.swift
 //  Snapzy (靓相 Shotlit)
 //
-//  Camera capture 摄像头采集 — front camera feed for the face bubble.
+//  Camera capture 摄像头采集 — grabs frames, runs beauty, delivers processed frames.
 //
 
 import AVFoundation
 import AppKit
 
-/// Captures the webcam feed and exposes a preview layer for the bubble.
-/// 采集摄像头画面，提供给露脸 bubble 显示的预览层。
+/// Captures the webcam, runs beauty per-frame, calls back with processed CGImages.
+/// 采集摄像头，逐帧美颜，回调处理后的画面。
 @MainActor
-final class CameraCaptureService {
+final class CameraCaptureService: NSObject {
   let session = AVCaptureSession()
-  let previewLayer: AVCaptureVideoPreviewLayer
+  private let output = AVCaptureVideoDataOutput()
+  private let videoQueue = DispatchQueue(label: "shotlit.camera.video")
+  nonisolated let beauty = BeautyProcessor()
   private var isConfigured = false
 
-  init() {
-    previewLayer = AVCaptureVideoPreviewLayer(session: session)
-    previewLayer.videoGravity = .resizeAspectFill
-  }
+  /// Called on the main actor with each processed frame. 每帧处理后在主线程回调。
+  var onFrame: (@MainActor (CGImage) -> Void)?
 
-  /// Request permission then start the session. 请求权限并启动采集。
   func start() {
     switch AVCaptureDevice.authorizationStatus(for: .video) {
     case .authorized:
@@ -31,9 +30,7 @@ final class CameraCaptureService {
         guard granted else { return }
         Task { @MainActor in self.configureAndRun() }
       }
-    case .denied, .restricted:
-      break
-    @unknown default:
+    default:
       break
     }
   }
@@ -53,6 +50,12 @@ final class CameraCaptureService {
          session.canAddInput(input) {
         session.addInput(input)
       }
+      output.alwaysDiscardsLateVideoFrames = true
+      output.videoSettings = [
+        kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+      ]
+      output.setSampleBufferDelegate(self, queue: videoQueue)
+      if session.canAddOutput(output) { session.addOutput(output) }
       session.commitConfiguration()
       isConfigured = true
     }
@@ -60,4 +63,27 @@ final class CameraCaptureService {
       session.startRunning()
     }
   }
+}
+
+// MARK: - Frame delegate (runs on videoQueue) 帧回调(在后台队列)
+
+extension CameraCaptureService: AVCaptureVideoDataOutputSampleBufferDelegate {
+  nonisolated func captureOutput(
+    _ output: AVCaptureOutput,
+    didOutput sampleBuffer: CMSampleBuffer,
+    from connection: AVCaptureConnection
+  ) {
+    guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+    guard let cgImage = beauty.process(pixelBuffer) else { return }
+    let sendable = UncheckedSendableImage(cgImage)
+    Task { @MainActor in
+      self.onFrame?(sendable.image)
+    }
+  }
+}
+
+/// Wrap CGImage to cross the isolation boundary. 包装 CGImage 以跨越隔离边界。
+private struct UncheckedSendableImage: @unchecked Sendable {
+  let image: CGImage
+  init(_ image: CGImage) { self.image = image }
 }

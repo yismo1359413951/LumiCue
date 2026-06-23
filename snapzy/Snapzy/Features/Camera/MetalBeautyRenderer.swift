@@ -16,7 +16,8 @@ import simd
 nonisolated final class MetalBeautyRenderer: @unchecked Sendable {
   var smoothing: Float = 0.7   // 磨皮
   var whitening: Float = 0.35  // 美白
-  var thinFace: Float = 0.5    // 瘦脸
+  var thinFace: Float = 0.5    // 整脸瘦脸
+  var chinFace: Float = 0.0    // 瘦下巴(脸框近似效果差,待Vision精确关键点认真做,暂关)
   var autoFrame: Bool = true   // 自动构图
   var filter: BeautyFilterType = .japanese
 
@@ -90,6 +91,8 @@ nonisolated final class MetalBeautyRenderer: @unchecked Sendable {
     var face4 = SIMD4<Float>(Float(smCenterX), Float(1.0 - smCenterY), Float(smSize),
                              hasFace ? thinFace : 0)
     enc.setBytes(&face4, length: MemoryLayout<SIMD4<Float>>.size, index: 2)
+    var chin = hasFace ? chinFace : 0
+    enc.setBytes(&chin, length: MemoryLayout<Float>.size, index: 3)
     let tg = MTLSize(width: 16, height: 16, depth: 1)
     let groups = MTLSize(width: (width + 15) / 16, height: (height + 15) / 16, depth: 1)
     enc.dispatchThreadgroups(groups, threadsPerThreadgroup: tg)

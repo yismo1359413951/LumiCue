@@ -65,8 +65,14 @@
     坑:CALayer 坐标 Y 朝上，自定义 path 按"底 fy=0、顶 fy=1"画(否则心形上下颠倒像屁股)
     还需:长方形(非正方形尺寸)、明确的形状选择 UI(不只单击循环)
 
-2. ⚠️ 基础美颜 — Core Image 方案失败(雾蒙蒙,2026-06-23)，已暂关(smoothing/whitening=0)。
-   🔴 明天正解:移植 AwemeLike `FaceFilter/` 的 GPUImage 磨皮(双边滤波+高反差保留+肤色检测)到 Metal shader，做美颜相机级效果。**先吃透开源 shader 再写，别再用通用API凑合**。
+2. ✅ 基础美颜(2026-06-23,界面验证) — Metal 双边滤波磨皮(保边不糊)+美白, 文件 Beauty.metal+MetalBeautyRenderer.swift
+3. ✅ 滤镜 — 9个3D LUT(CIColorCube:电影/日系/奶油肌/胶片等), BeautyFilterType.swift
+4. ✅ 人脸跟随 — Vision检测+缩小到40%完整居中+防抖+模糊背景填充(消黑边), FaceTracker.swift
+5. ✅ 水平镜像(像照镜子,消左右反别扭)
+6. ✅ 单击弹选项菜单(形状/滤镜/美颜强度), CameraBubbleWindow
+7. ⚠️ 瘦脸 — 整体液化基础版done(已修背景变形:液化限人脸椭圆区), 但**非美图秀秀级分部位**
+   🔴 路线已定(用户2026-06-23):**手搓认真开发分部位精细美颜** — 用 Apple Vision 76点人脸关键点, 逐部位(瘦下巴/瘦颧骨/瘦鼻/大眼/美妆)独立液化。数周工程,先吃透Vision FaceLandmarks 76点。诚实:难追美图秀秀多年调优的商业级。
+   备选(用户暂不选):接PixelFree/Banuba商业SDK(花钱,现成商业级)。
 3. 隐形提词器（浮窗 + 不加 exceptedWindow = 录不进去）
 4. 全程"先英文后中文"文案
 

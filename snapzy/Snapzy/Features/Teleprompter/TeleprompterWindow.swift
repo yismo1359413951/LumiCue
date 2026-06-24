@@ -82,9 +82,7 @@ final class TeleprompterWindow: NSWindow {
     shadow.shadowOffset = NSSize(width: 0, height: -1)
     let attrs: [NSAttributedString.Key: Any] = [
       .foregroundColor: textView.textColor ?? .white,
-      .strokeColor: NSColor.black,
-      .strokeWidth: -3.5, // 负值=描边+填充
-      .shadow: shadow,
+      .shadow: shadow, // 只留柔和阴影(透明背景能看清), 不要硬描边
       .font: textView.font ?? NSFont.systemFont(ofSize: 30, weight: .semibold),
     ]
     ts.addAttributes(attrs, range: NSRange(location: 0, length: ts.length))

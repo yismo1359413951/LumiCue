@@ -11,12 +11,13 @@ import CoreGraphics
 import CoreImage
 
 enum BeautyFilterType: String, CaseIterable {
-  case original, natural, bright, elegant
+  case original, beauty, natural, bright, elegant
 
   /// Display name (English then Chinese). 显示名(先英后中)。
   var displayName: String {
     switch self {
     case .original: return "Original 原图"
+    case .beauty: return "Beauty 美颜"
     case .natural: return "Natural 自然"
     case .bright: return "Bright 明亮"
     case .elegant: return "Elegant 柔和"
@@ -27,6 +28,7 @@ enum BeautyFilterType: String, CaseIterable {
   private var lookupName: String? {
     switch self {
     case .original: return nil
+    case .beauty: return "lookup_beauty"
     case .natural: return "lookup_amatorka"
     case .bright: return "lookup_miss_etikate"
     case .elegant: return "lookup_soft_elegance_1"
@@ -77,8 +79,8 @@ enum BeautyFilterType: String, CaseIterable {
       for g in 0 ..< dim {
         for r in 0 ..< dim {
           let x = cellX + r
-          // CGContext 原点左下、PNG 自上而下: 翻 y 取正确行
-          let y = (side - 1) - (cellYTop + g)
+          // CGBitmapContext buffer row0=top, 与标准 GPUImage 采样一致(不翻 y)
+          let y = cellYTop + g
           let pi = (y * side + x) * 4
           cube[off] = Float(px[pi]) / 255
           cube[off + 1] = Float(px[pi + 1]) / 255

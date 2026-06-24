@@ -77,6 +77,17 @@
 
 🆕 提词器右上角控制条(用户 2026-06-23 建议,比右键直观): 像浏览器窗口那样——右上角放 小/中/大 三档大小按钮 + 关闭✕(碍事一键关掉) + 暂停/播放按钮。替代/补充右键菜单。用户原话"一直在滚不知道怎么关"=关闭✕和可见的暂停是刚需。
 
+## 🔥 美颜换思路:集成 GpuPixel 专业引擎(2026-06-24 决策)
+> 教训:手搓美颜(双边磨皮+程序LUT)追不上美颜相机商业级,用户"换种思路"→改用开源专业引擎。
+> GpuPixel(pixpark/gpupixel ★2290 Apache-2.0免费可商用):磨皮/美白/瘦脸/大眼/口红腮红,全0-1滑块,自带人脸检测。
+> 资源已就位:`snapzy/Snapzy/ThirdParty/GpuPixel/`(gpupixel.framework+models+include),源码`~/Desktop/Shotlit/gpupixel/`,API见 demo/desktop/app.cc。
+- [x] 找到引擎 + 下预编译macOS库 + 拷framework/模型进项目
+- [ ] 1. 配Xcode链接 gpupixel.framework(Link Binary + Embed + FRAMEWORK_SEARCH_PATHS + C++ interop)
+- [ ] 2. 写 ObjC++ 桥接 GpuPixelBeauty.mm(封装 BeautyFaceFilter/FaceReshapeFilter/FaceDetector 给 Swift)
+- [ ] 3. 建 OpenGL context + 摄像头帧 CVPixelBuffer→RGBA→GpuPixel→RGBA→显示
+- [ ] 4. 替换现有 MetalBeautyRenderer 美颜 + 滑块UI(磨皮/美白/瘦脸/大眼 0-100)
+- [ ] 5. 拷 models(face_align/face_det.mars_model)进 bundle 资源
+
 ## 💡 收件箱(2026-06-24 第二天补充)
 - 🔴 BUG: bubble里"脸中间被一条透明的边隔开"=前景(缩小画面)+模糊背景合成的边穿过脸。修:做人像分割(VNGeneratePersonSegmentationRequest)抠人物+背景虚化,而非整画面缩小;或前景边缘羽化过渡。
 

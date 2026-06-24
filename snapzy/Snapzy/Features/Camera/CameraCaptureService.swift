@@ -21,7 +21,7 @@ final class CameraCaptureService: NSObject {
   // GpuPixel 专业美颜引擎(磨皮/美白/瘦脸/大眼), 在 videoQueue 线程使用
   nonisolated(unsafe) private var gpuBeauty: GpuPixelBeauty?
   nonisolated(unsafe) private var gpuInitTried = false
-  nonisolated(unsafe) var useGpuPixel = true
+  nonisolated(unsafe) var useGpuPixel = false // 美颜引擎黑屏待修(OpenGL线程坑), 暂用正常画面
   nonisolated(unsafe) var gpSmoothing: Float = 0.6  // 磨皮
   nonisolated(unsafe) var gpWhitening: Float = 0.3  // 美白
   nonisolated(unsafe) var gpFaceSlim: Float = 0.0   // 瘦脸

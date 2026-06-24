@@ -19,7 +19,7 @@ nonisolated final class MetalBeautyRenderer: @unchecked Sendable {
   var thinFace: Float = 0.0    // 瘦脸暂关(之前做坏=下巴变方,待专业重做)
   var chinFace: Float = 0.0    // 瘦下巴暂关
   var autoFrame: Bool = false  // 自动构图暂关(=脸被P一半的根源,先直接显示完整画面)
-  var filter: BeautyFilterType = .beauty // 默认美颜色(用户选的"3" beauty-mine, natural=可选)
+  var filter: BeautyFilterType = .original // 暂用正常颜色(美颜引擎待修)
 
   private let device: MTLDevice
   private let queue: MTLCommandQueue

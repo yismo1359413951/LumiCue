@@ -156,19 +156,20 @@ final class CameraBubbleWindow: NSWindow {
     menu.addItem(filterItem)
     menu.setSubmenu(filterSub, for: filterItem)
 
-    // 美颜强度 Beauty
+    // 美颜滑块 Beauty (0-100, 拖动实时调节 GpuPixel)
     let beautySub = NSMenu()
-    let presets: [(String, Float, Float)] = [
-      ("Strong 强", 0.9, 0.6), ("Medium 中", 0.7, 0.35),
-      ("Light 弱", 0.4, 0.2), ("Off 关", 0.0, 0.0),
+    let sliders: [(String, Int, Float)] = [
+      ("Smooth 磨皮", 0, capture.gpSmoothing),
+      ("Whiten 美白", 1, capture.gpWhitening),
+      ("Slim 瘦脸", 2, capture.gpFaceSlim),
+      ("Eye 大眼", 3, capture.gpEyeZoom),
     ]
-    for (title, sm, wh) in presets {
-      let item = NSMenuItem(title: title, action: #selector(pickBeauty(_:)), keyEquivalent: "")
-      item.target = self
-      item.representedObject = [sm, wh]
+    for (title, tag, val) in sliders {
+      let item = NSMenuItem()
+      item.view = makeBeautySlider(title: title, tag: tag, value: val)
       beautySub.addItem(item)
     }
-    let beautyItem = NSMenuItem(title: "Beauty 美颜", action: nil, keyEquivalent: "")
+    let beautyItem = NSMenuItem(title: "Beauty 美颜(拖滑块)", action: nil, keyEquivalent: "")
     menu.addItem(beautyItem)
     menu.setSubmenu(beautySub, for: beautyItem)
 
@@ -190,5 +191,36 @@ final class CameraBubbleWindow: NSWindow {
     guard let v = sender.representedObject as? [Float], v.count == 2 else { return }
     capture.beauty.smoothing = v[0]
     capture.beauty.whitening = v[1]
+  }
+
+  /// 建一个带标签的美颜滑块(菜单项视图)。tag 0磨皮/1美白/2瘦脸/3大眼。
+  private func makeBeautySlider(title: String, tag: Int, value: Float) -> NSView {
+    let v = NSView(frame: NSRect(x: 0, y: 0, width: 220, height: 40))
+    let label = NSTextField(labelWithString: title)
+    label.frame = NSRect(x: 14, y: 21, width: 180, height: 15)
+    label.font = .systemFont(ofSize: 11)
+    label.textColor = .labelColor
+    let slider = NSSlider(frame: NSRect(x: 14, y: 4, width: 192, height: 16))
+    slider.minValue = 0
+    slider.maxValue = 100
+    slider.doubleValue = Double(value * 100)
+    slider.tag = tag
+    slider.target = self
+    slider.action = #selector(beautySliderChanged(_:))
+    slider.isContinuous = true
+    v.addSubview(label)
+    v.addSubview(slider)
+    return v
+  }
+
+  @objc private func beautySliderChanged(_ sender: NSSlider) {
+    let v = Float(sender.doubleValue / 100.0)
+    switch sender.tag {
+    case 0: capture.gpSmoothing = v
+    case 1: capture.gpWhitening = v
+    case 2: capture.gpFaceSlim = v
+    case 3: capture.gpEyeZoom = v
+    default: break
+    }
   }
 }

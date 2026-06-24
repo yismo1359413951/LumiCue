@@ -7,19 +7,46 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3859B87DFC59200E0A9F0502 /* gpupixel.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D4085A3D4744DBC35EF7148 /* gpupixel.framework */; };
 		A31BF0A82F1CF69100902D12 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A31BF0A72F1CF69100902D12 /* Sparkle */; };
 		B42DE1A02FA1B90000WEBP01 /* WebP in Frameworks */ = {isa = PBXBuildFile; productRef = B42DE1A12FA1B90000WEBP01 /* WebP */; };
 		C73DB2A02FA3GRDB00GRDB01 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = C73DB2A12FA3GRDB00GRDB01 /* GRDB */; };
+		CC31E07538DB54AB36D5E6A9 /* gpupixel.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 9D4085A3D4744DBC35EF7148 /* gpupixel.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		D00100082F9F000000000008 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A364629B2F18EEDA0003453D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A36462A22F18EEDA0003453D;
+			remoteInfo = Snapzy;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E192B206054160DC186ACF39 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				CC31E07538DB54AB36D5E6A9 /* gpupixel.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		9D4085A3D4744DBC35EF7148 /* gpupixel.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = gpupixel.framework; path = Snapzy/ThirdParty/GpuPixel/gpupixel.framework; sourceTree = "<group>"; };
 		A36462A32F18EEDA0003453D /* Snapzy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Snapzy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D00100012F9F000000000001 /* SnapzyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SnapzyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D00110022F9F000000000002 /* Snapzy.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = Snapzy.xctestplan; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		A3A629C62F5E9E4E00E06B7C /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		A3A629C62F5E9E4E00E06B7C /* Exceptions for "Snapzy" folder in "Snapzy" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Config/Secrets.xcconfig,
@@ -35,13 +62,15 @@
 		A36462A52F18EEDA0003453D /* Snapzy */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				A3A629C62F5E9E4E00E06B7C /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+				A3A629C62F5E9E4E00E06B7C /* Exceptions for "Snapzy" folder in "Snapzy" target */,
 			);
 			path = Snapzy;
 			sourceTree = "<group>";
 		};
 		D00100032F9F000000000003 /* SnapzyTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = SnapzyTests;
 			sourceTree = "<group>";
 		};
@@ -55,6 +84,7 @@
 				A31BF0A82F1CF69100902D12 /* Sparkle in Frameworks */,
 				B42DE1A02FA1B90000WEBP01 /* WebP in Frameworks */,
 				C73DB2A02FA3GRDB00GRDB01 /* GRDB in Frameworks */,
+				3859B87DFC59200E0A9F0502 /* gpupixel.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -68,6 +98,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		39A86D7BE39C40BA307A47F4 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				9D4085A3D4744DBC35EF7148 /* gpupixel.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		A364629A2F18EEDA0003453D = {
 			isa = PBXGroup;
 			children = (
@@ -75,6 +113,7 @@
 				A36462A52F18EEDA0003453D /* Snapzy */,
 				D00100032F9F000000000003 /* SnapzyTests */,
 				A36462A42F18EEDA0003453D /* Products */,
+				39A86D7BE39C40BA307A47F4 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -97,6 +136,7 @@
 				A364629F2F18EEDA0003453D /* Sources */,
 				A36462A02F18EEDA0003453D /* Frameworks */,
 				A36462A12F18EEDA0003453D /* Resources */,
+				E192B206054160DC186ACF39 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -132,23 +172,11 @@
 				D00100032F9F000000000003 /* SnapzyTests */,
 			);
 			name = SnapzyTests;
-			packageProductDependencies = (
-			);
 			productName = SnapzyTests;
 			productReference = D00100012F9F000000000001 /* SnapzyTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
-
-/* Begin PBXContainerItemProxy section */
-		D00100082F9F000000000008 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A364629B2F18EEDA0003453D /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = A36462A22F18EEDA0003453D;
-			remoteInfo = Snapzy;
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin PBXProject section */
 		A364629B2F18EEDA0003453D /* Project object */ = {
@@ -174,8 +202,8 @@
 				en,
 				vi,
 				Base,
-				zh-Hans,
-				zh-Hant,
+				"zh-Hans",
+				"zh-Hant",
 				es,
 				ja,
 				ko,
@@ -370,17 +398,27 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CLANG_CXX_LIBRARY = "libc++";
 				CODE_SIGN_ENTITLEMENTS = Snapzy/Snapzy.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 124;
 				DEVELOPMENT_TEAM = XMHV5GH2Z7;
-					ENABLE_APP_SANDBOX = NO;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-					ENABLE_USER_SELECTED_FILES = readwrite;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				EXECUTABLE_NAME = Snapzy;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Snapzy/ThirdParty/GpuPixel",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Snapzy/ThirdParty/GpuPixel/include",
+				);
 				INFOPLIST_FILE = Snapzy/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Snapzy Debug";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
@@ -392,8 +430,8 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.24.0;
-				PRODUCT_MODULE_NAME = Snapzy;
 				PRODUCT_BUNDLE_IDENTIFIER = com.trongduong.snapzy.debug;
+				PRODUCT_MODULE_NAME = Snapzy;
 				PRODUCT_NAME = "Snapzy Debug";
 				REGISTER_APP_GROUPS = YES;
 				SNAPZY_BUNDLE_NAME = "Snapzy Debug";
@@ -401,6 +439,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "Snapzy/Snapzy-Bridging-Header.h";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -412,16 +451,26 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CLANG_CXX_LIBRARY = "libc++";
 				CODE_SIGN_ENTITLEMENTS = Snapzy/Snapzy.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 124;
 				DEVELOPMENT_TEAM = XMHV5GH2Z7;
-					ENABLE_APP_SANDBOX = NO;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-					ENABLE_USER_SELECTED_FILES = readwrite;
+				ENABLE_USER_SELECTED_FILES = readwrite;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Snapzy/ThirdParty/GpuPixel",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Snapzy/ThirdParty/GpuPixel/include",
+				);
 				INFOPLIST_FILE = Snapzy/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Snapzy;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
@@ -441,6 +490,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "Snapzy/Snapzy-Bridging-Header.h";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 			};

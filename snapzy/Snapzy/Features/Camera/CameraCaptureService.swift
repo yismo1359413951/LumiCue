@@ -2,21 +2,36 @@
 //  CameraCaptureService.swift
 //  Snapzy (靓相 Shotlit)
 //
-//  Camera capture 摄像头采集 — grabs frames, runs beauty, delivers processed frames.
+//  Camera capture 摄像头采集 — grabs frames, runs GpuPixel beauty, delivers processed frames.
 //
 
 import AVFoundation
 import AppKit
 
 /// Captures the webcam, runs beauty per-frame, calls back with processed CGImages.
-/// 采集摄像头，逐帧美颜，回调处理后的画面。
+/// 采集摄像头，逐帧美颜（GpuPixel 专业引擎），回调处理后的画面。
 @MainActor
 final class CameraCaptureService: NSObject {
   let session = AVCaptureSession()
   private let output = AVCaptureVideoDataOutput()
   private let videoQueue = DispatchQueue(label: "shotlit.camera.video")
-  nonisolated let beauty = MetalBeautyRenderer()
+  nonisolated let beauty = MetalBeautyRenderer() // 旧引擎(fallback)
   private var isConfigured = false
+
+  // GpuPixel 专业美颜引擎(磨皮/美白/瘦脸/大眼), 在 videoQueue 线程使用
+  nonisolated(unsafe) private var gpuBeauty: GpuPixelBeauty?
+  nonisolated(unsafe) private var gpuInitTried = false
+  nonisolated(unsafe) var useGpuPixel = true
+  nonisolated(unsafe) var gpSmoothing: Float = 0.6  // 磨皮
+  nonisolated(unsafe) var gpWhitening: Float = 0.3  // 美白
+  nonisolated(unsafe) var gpFaceSlim: Float = 0.0   // 瘦脸
+  nonisolated(unsafe) var gpEyeZoom: Float = 0.0    // 大眼
+
+  /// GpuPixel 资源目录(framework 内含 models/ 和 res/)
+  nonisolated private static var gpuResourcePath: String {
+    let fw = Bundle.main.privateFrameworksPath ?? Bundle.main.bundlePath
+    return fw + "/gpupixel.framework/Resources"
+  }
 
   /// Called on the main actor with each processed frame. 每帧处理后在主线程回调。
   var onFrame: (@MainActor (CGImage) -> Void)?
@@ -63,6 +78,41 @@ final class CameraCaptureService: NSObject {
       session.startRunning()
     }
   }
+
+  // MARK: - GpuPixel 帧处理(videoQueue 线程, OpenGL 上下文亲和此线程)
+
+  nonisolated private func processWithGpuPixel(_ pixelBuffer: CVPixelBuffer) -> CGImage? {
+    if !gpuInitTried {
+      gpuInitTried = true
+      gpuBeauty = GpuPixelBeauty(resourcePath: Self.gpuResourcePath)
+      if gpuBeauty == nil { NSLog("[Camera] GpuPixel 初始化失败, 回退旧引擎") }
+    }
+    guard let gp = gpuBeauty else { return nil }
+    gp.setSmoothing(gpSmoothing, whitening: gpWhitening, faceSlim: gpFaceSlim, eyeZoom: gpEyeZoom)
+
+    CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
+    defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly) }
+    guard let base = CVPixelBufferGetBaseAddress(pixelBuffer) else { return nil }
+    let w = CVPixelBufferGetWidth(pixelBuffer)
+    let h = CVPixelBufferGetHeight(pixelBuffer)
+    let stride = CVPixelBufferGetBytesPerRow(pixelBuffer)
+    var ow: Int32 = 0, oh: Int32 = 0
+    guard let rgba = gp.processBGRA(base.assumingMemoryBound(to: UInt8.self),
+                                    width: Int32(w), height: Int32(h), stride: Int32(stride),
+                                    outWidth: &ow, outHeight: &oh) else { return nil }
+    return Self.rgbaToCGImage(rgba, width: Int(ow), height: Int(oh))
+  }
+
+  nonisolated private static func rgbaToCGImage(_ data: Data, width: Int, height: Int) -> CGImage? {
+    guard width > 0, height > 0, data.count >= width * height * 4 else { return nil }
+    let cs = CGColorSpaceCreateDeviceRGB()
+    let bitmapInfo = CGBitmapInfo(
+      rawValue: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue)
+    guard let provider = CGDataProvider(data: data as CFData) else { return nil }
+    return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
+                   bytesPerRow: width * 4, space: cs, bitmapInfo: bitmapInfo,
+                   provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
+  }
 }
 
 // MARK: - Frame delegate (runs on videoQueue) 帧回调(在后台队列)
@@ -74,8 +124,15 @@ extension CameraCaptureService: AVCaptureVideoDataOutputSampleBufferDelegate {
     from connection: AVCaptureConnection
   ) {
     guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-    guard let cgImage = beauty.process(pixelBuffer) else { return }
-    let sendable = UncheckedSendableImage(cgImage)
+    var cgImage: CGImage?
+    if useGpuPixel {
+      cgImage = processWithGpuPixel(pixelBuffer)
+    }
+    if cgImage == nil {
+      cgImage = beauty.process(pixelBuffer) // 回退旧引擎
+    }
+    guard let result = cgImage else { return }
+    let sendable = UncheckedSendableImage(result)
     Task { @MainActor in
       self.onFrame?(sendable.image)
     }

@@ -15,6 +15,68 @@
 
 import AppKit
 import UniformTypeIdentifiers
+import Speech
+import AVFoundation
+
+// MARK: - 语音跟随引擎(本地识别, 你说到哪滚到哪)
+
+@MainActor
+final class VoiceFollower: NSObject {
+  private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "zh-CN"))
+  private let audioEngine = AVAudioEngine()
+  private var request: SFSpeechAudioBufferRecognitionRequest?
+  private var task: SFSpeechRecognitionTask?
+  var onTranscript: ((String) -> Void)?
+  var onStatus: ((String) -> Void)?
+  private(set) var running = false
+
+  func start() {
+    SFSpeechRecognizer.requestAuthorization { [weak self] auth in
+      DispatchQueue.main.async {
+        guard auth == .authorized else { self?.onStatus?("没拿到语音识别权限(系统设置→隐私)"); return }
+        self?.beginAudio()
+      }
+    }
+  }
+
+  private func beginAudio() {
+    guard let recognizer, recognizer.isAvailable else { onStatus?("中文识别暂不可用"); return }
+    task?.cancel(); task = nil
+    let req = SFSpeechAudioBufferRecognitionRequest()
+    req.shouldReportPartialResults = true
+    if recognizer.supportsOnDeviceRecognition { req.requiresOnDeviceRecognition = true } // 本地优先, 不上传
+    request = req
+    let input = audioEngine.inputNode
+    let fmt = input.outputFormat(forBus: 0)
+    input.installTap(onBus: 0, bufferSize: 1024, format: fmt) { [weak self] buf, _ in
+      self?.request?.append(buf)
+    }
+    audioEngine.prepare()
+    do { try audioEngine.start() } catch { onStatus?("麦克风启动失败"); return }
+    running = true
+    onStatus?("🎤 语音跟随中：开口念，字跟着你走")
+    task = recognizer.recognitionTask(with: req) { [weak self] result, err in
+      if let r = result { self?.onTranscript?(r.bestTranscription.formattedString) }
+      if err != nil || (result?.isFinal ?? false) { self?.restartIfRunning() } // 停顿后自动续, 长时间跟随
+    }
+  }
+
+  private func restartIfRunning() {
+    guard running else { return }
+    audioEngine.inputNode.removeTap(onBus: 0)
+    audioEngine.stop()
+    request?.endAudio(); request = nil; task = nil
+    beginAudio()
+  }
+
+  func stop() {
+    running = false
+    audioEngine.inputNode.removeTap(onBus: 0)
+    audioEngine.stop()
+    request?.endAudio(); request = nil
+    task?.cancel(); task = nil
+  }
+}
 
 // MARK: - 逐行渲染视图(3D 纵深 + 追光 + 卡拉OK 逐字)
 
@@ -149,6 +211,23 @@ private final class LinesView: NSView {
     scrollOffset = lineCenters[target] - first
   }
 
+  // 语音跟随用
+  var lineCount: Int { lineTexts.count }
+  func textOfLine(_ i: Int) -> String { (i >= 0 && i < lineTexts.count) ? lineTexts[i] : "" }
+  /// 当前焦点行序号(离焦点最近)。
+  var currentLineIndex: Int {
+    guard !lineCenters.isEmpty, let first = lineCenters.first else { return 0 }
+    let f = first + scrollOffset
+    var idx = 0; var best = CGFloat.greatestFiniteMagnitude
+    for (i, c) in lineCenters.enumerated() { let d = abs(c - f); if d < best { best = d; idx = i } }
+    return idx
+  }
+  /// 直接把第 i 行对到焦点(语音跟随驱动)。
+  func focusLine(_ i: Int) {
+    guard i >= 0, i < lineCenters.count, let first = lineCenters.first else { return }
+    scrollOffset = lineCenters[i] - first
+  }
+
   /// 重念这句: 把当前焦点行挪到刚进焦点的位置, 从这句开头重念。
   func restartCurrentLine() {
     guard !lineCenters.isEmpty, let first = lineCenters.first else { return }
@@ -241,6 +320,10 @@ final class TeleprompterWindow: NSWindow {
 
   private var playPauseButton: NSButton!
   private var editButton: NSButton!
+  private var voiceButton: NSButton!        // 🎤 语音跟随开关
+  private let voiceFollower = VoiceFollower()
+  private var voiceMode = false
+  private var voiceLine = 0
   private var rescuePanel: NSView!          // 卡壳救场面板(暂停时出现)
   private var rescueStack: NSStackView!
   private var retreatButton: NSButton!
@@ -344,8 +427,9 @@ final class TeleprompterWindow: NSWindow {
     }
     playPauseButton = mkBtn("⏸", #selector(togglePlay))
     editButton = mkBtn("编辑", #selector(toggleEdit))
+    voiceButton = mkBtn("🎤", #selector(toggleVoice))
     let stack = NSStackView(views: [
-      mkBtn("⏪", #selector(stepBack)), playPauseButton, editButton,
+      mkBtn("⏪", #selector(stepBack)), playPauseButton, voiceButton, editButton,
       mkBtn("小", #selector(sizeSmall)), mkBtn("中", #selector(sizeMedium)), mkBtn("大", #selector(sizeLarge)),
       mkBtn("清", #selector(clearScript)), mkBtn("✕", #selector(closePrompter)),
     ])
@@ -415,7 +499,7 @@ final class TeleprompterWindow: NSWindow {
   private func layoutContents() {
     guard let cv = contentView else { return }
     let w = cv.bounds.width, h = cv.bounds.height
-    let barH: CGFloat = 24, barW: CGFloat = 292, journeyH: CGFloat = 30
+    let barH: CGFloat = 24, barW: CGFloat = 322, journeyH: CGFloat = 30
     effectView.frame = cv.bounds
     skyView.frame = cv.bounds
     skyGradient.frame = cv.bounds
@@ -460,6 +544,7 @@ final class TeleprompterWindow: NSWindow {
   private func tick() {
     frameTick += 1
     guard playing, !editing else { return }
+    if voiceMode { return }   // 语音模式: 滚动由你说话驱动, 不自动推进
     linesView.scrollOffset += speed
     if linesView.scrollOffset > linesView.resetAt {     // 念完一遍 → 回到开头, 重置游戏
       linesView.scrollOffset = 0
@@ -769,6 +854,66 @@ final class TeleprompterWindow: NSWindow {
     retreatButton.title = "← 退\(retreatCount)句"
   }
   @objc private func rescueResume() { if !playing { togglePlay() } }
+
+  // MARK: - 🎤 语音跟随
+
+  @objc private func toggleVoice() {
+    voiceMode.toggle()
+    voiceButton.contentTintColor = voiceMode ? .systemGreen : .white
+    if voiceMode {
+      if !playing { togglePlay() }            // 确保在播放态
+      voiceLine = linesView.currentLineIndex
+      voiceFollower.onTranscript = { [weak self] t in self?.alignAndScroll(t) }
+      voiceFollower.onStatus = { [weak self] m in self?.showStatus(m) }
+      voiceFollower.start()
+    } else {
+      voiceFollower.stop()
+      showStatus("")
+    }
+  }
+
+  /// 把识别到的话尾, 在当前行附近几行里模糊匹配 → 跟着往前滚。
+  private func alignAndScroll(_ transcript: String) {
+    guard voiceMode else { return }
+    let clean = transcript.filter { !$0.isWhitespace && !$0.isPunctuation }
+    guard clean.count >= 2 else { return }
+    let tail = String(clean.suffix(6))
+    let n = linesView.lineCount
+    guard n > 0 else { return }
+    var found = -1
+    let start = max(0, voiceLine)
+    for i in start..<min(n, start + 6) {
+      let lt = linesView.textOfLine(i).filter { !$0.isWhitespace && !$0.isPunctuation }
+      if lt.count >= 2, looseContains(lt, tail) { found = i }
+    }
+    if found >= voiceLine {
+      voiceLine = found
+      linesView.focusLine(found)
+      linesView.updateDepth()
+      updateJourney()
+    }
+  }
+
+  /// hay 是否包含 tail 的任意 >=2 字连续子串(容识别误差)。
+  private func looseContains(_ hay: String, _ tail: String) -> Bool {
+    let a = Array(tail)
+    var len = a.count
+    while len >= 2 {
+      var i = 0
+      while i + len <= a.count {
+        if hay.contains(String(a[i..<i + len])) { return true }
+        i += 1
+      }
+      len -= 1
+    }
+    return false
+  }
+
+  private func showStatus(_ s: String) {
+    comboLayer.string = NSAttributedString(string: s, attributes: [
+      .font: NSFont.systemFont(ofSize: 12, weight: .semibold),
+      .foregroundColor: NSColor.systemTeal])
+  }
   @objc private func setSpeed(_ s: NSMenuItem) { if let v = s.representedObject as? Double { speed = CGFloat(v) } }
   @objc private func setFontSize(_ s: NSMenuItem) { if let v = s.representedObject as? Double { linesView.fontSize = CGFloat(v) } }
   @objc private func setTextColor(_ s: NSMenuItem) {

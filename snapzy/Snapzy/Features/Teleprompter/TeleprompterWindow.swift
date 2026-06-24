@@ -879,6 +879,7 @@ final class TeleprompterWindow: NSWindow {
   private func alignAndScroll(_ transcript: String) {
     guard voiceMode else { return }
     let clean = transcript.filter { !$0.isWhitespace && !$0.isPunctuation }
+    showStatus(clean.isEmpty ? "👂 没听到声音…" : "👂 听到：" + String(clean.suffix(12)))  // 实时显示识别到的字(诊断)
     guard clean.count >= 2 else { return }
     let tail = String(clean.suffix(6))
     let n = linesView.lineCount

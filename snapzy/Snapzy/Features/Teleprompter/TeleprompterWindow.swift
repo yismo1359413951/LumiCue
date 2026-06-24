@@ -30,8 +30,8 @@ final class TeleprompterWindow: NSWindow {
                styleMask: [.borderless], backing: .buffered, defer: false)
     sharingType = .readOnly
     isOpaque = false
-    backgroundColor = NSColor.black.withAlphaComponent(0.92) // 接近不透明:主播看清(隐形靠 sharingType=.none, 不靠视觉透明)
-    hasShadow = true
+    backgroundColor = .clear // 全透明:录屏不挡视野(隐形靠 sharingType=.none); 文字靠描边+阴影在透明上清楚
+    hasShadow = false
     level = NSWindow.Level(rawValue: NSWindow.Level.floating.rawValue + 1)
     collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
     isMovableByWindowBackground = true
@@ -51,6 +51,7 @@ final class TeleprompterWindow: NSWindow {
     textView.isEditable = true
     textView.isRichText = false // 粘贴强制纯文本: 不带来源的颜色/字体, 统一显示
     textView.drawsBackground = false
+    textView.delegate = self
     textView.textColor = .white
     textView.insertionPointColor = .white
     textView.font = NSFont.systemFont(ofSize: 30, weight: .semibold)
@@ -68,7 +69,26 @@ final class TeleprompterWindow: NSWindow {
 
     setupControlBar()
     layoutContents()
+    applyTextStyle()
     startScrolling()
+  }
+
+  /// 文字加黑描边+阴影: 透明背景上也清楚可读, 不需背景块。
+  private func applyTextStyle() {
+    guard let ts = textView.textStorage else { return }
+    let shadow = NSShadow()
+    shadow.shadowColor = NSColor.black.withAlphaComponent(0.95)
+    shadow.shadowBlurRadius = 5
+    shadow.shadowOffset = NSSize(width: 0, height: -1)
+    let attrs: [NSAttributedString.Key: Any] = [
+      .foregroundColor: textView.textColor ?? .white,
+      .strokeColor: NSColor.black,
+      .strokeWidth: -3.5, // 负值=描边+填充
+      .shadow: shadow,
+      .font: textView.font ?? NSFont.systemFont(ofSize: 30, weight: .semibold),
+    ]
+    ts.addAttributes(attrs, range: NSRange(location: 0, length: ts.length))
+    textView.typingAttributes = attrs
   }
 
   // MARK: - 右上角控制条
@@ -227,6 +247,7 @@ final class TeleprompterWindow: NSWindow {
     if panel.runModal() == .OK, let url = panel.url,
        let text = try? String(contentsOf: url, encoding: .utf8) {
       textView.string = text
+      applyTextStyle()
       layoutContents()
     }
   }
@@ -242,12 +263,20 @@ final class TeleprompterWindow: NSWindow {
   @objc private func setFontSize(_ s: NSMenuItem) {
     if let v = s.representedObject as? Double {
       textView.font = NSFont.systemFont(ofSize: CGFloat(v), weight: .semibold)
+      applyTextStyle()
     }
   }
 
   @objc private func setTextColor(_ s: NSMenuItem) {
     if let c = s.representedObject as? NSColor {
       textView.textColor = c
+      applyTextStyle()
     }
+  }
+}
+
+extension TeleprompterWindow: NSTextViewDelegate {
+  func textDidChange(_ notification: Notification) {
+    applyTextStyle() // 粘贴/输入后重新上描边阴影
   }
 }

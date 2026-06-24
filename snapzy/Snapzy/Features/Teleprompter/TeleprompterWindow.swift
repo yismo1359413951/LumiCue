@@ -2,63 +2,59 @@
 //  TeleprompterWindow.swift
 //  Snapzy (靓相 Shotlit)
 //
-//  游戏化隐形提词器 — 主播看得到、录屏/直播的观众看不到。
-//  隐形: NSWindow.sharingType = .none → 对所有屏幕捕获/直播软件隐形。
+//  游戏化隐形提词器 — 主播看得到、录屏/直播的观众看不到(sharingType=.none)。
 //
-//  第 1 批 地基:
-//   1. 毛玻璃背景 NSVisualEffectView — 后面内容被模糊, 文字浮其上清楚(治"透明叠字乱/纯黑挡视野")。
-//   2. 逐行渲染 LinesView — 每行一个 CATextLayer, 放弃单一 NSTextView 整体滚动。
-//   3. 3D 纵深 + 舞台追光 — 按"距焦点行的距离"算 scale/透明度(+轻虚化): 当前行最大最亮, 上下近大远小渐暗。
-//   4. 平滑滚动 — 30fps 逐像素推进, 实时刷新各行纵深/追光过渡。
+//  统一游戏体验(给念稿人自己的单人沉浸, 观众隐形看不到):
+//   · 地基: 毛玻璃 NSVisualEffectView + 逐行 CATextLayer 3D纵深 + 舞台追光 + 平滑滚动。
+//   · 🎵 节奏: 焦点行随滚动逐字点亮(卡拉OK), 念完一行迸火花 + COMBO 连击跳动。
+//   · 🌄 旅程: 背景天色随进度 白天→黄昏→星空; 底部光之路, 念完到终点放烟花🎆。
+//   · 🐱 精灵: 小猫沿路陪走, 念顺蹦跳冒爱心 / 暂停打盹 / 念完庆祝。
 //
-//  控制条: ⏸ 播放/暂停 · ✎ 编辑(粘贴/导入稿子) · 小/中/大 · 清 · ✕。
-//  右键: 导入 .txt / 清空 / 速度 / 字号 / 字色。
+//  控制条: ⏸ · ✎编辑 · 小/中/大 · 清 · ✕。 右键: 导入txt/清空/速度/字号/字色。 ⌘V 直接粘稿。
 //
 
 import AppKit
 import UniformTypeIdentifiers
 
-// MARK: - 逐行渲染视图(3D 纵深 + 舞台追光)
+// MARK: - 逐行渲染视图(3D 纵深 + 追光 + 卡拉OK 逐字)
 
-/// 把脚本按行拆成 CATextLayer 竖直堆叠, 按距焦点行的距离做近大远小 + 渐暗 + 轻虚化。
 @MainActor
 private final class LinesView: NSView {
-  // 显示参数(外部可改 → 触发重建或刷新)
   var script: String = "" { didSet { rebuild() } }
   var fontSize: CGFloat = 30 { didSet { rebuild() } }
   var fontFamily: String? = nil { didSet { rebuild() } }
   var textColor: NSColor = .white { didSet { recolor() } }
-  var highlightColor: NSColor = .systemYellow   // 卡拉OK 已念字颜色
+  var highlightColor: NSColor = .systemYellow
 
-  /// 当前滚动位置(像素, 0 = 第一行在焦点)。外部 timer 推进。
   var scrollOffset: CGFloat = 0
+  var enableBlur: Bool = true
+  var enableKaraoke: Bool = true
+  /// 一行念完(逐字点亮走完)时回调 → 连击/火花。仅播放时上层处理。
+  var onLineComplete: (() -> Void)?
 
-  // 纵深/追光调参
-  private let focusFrac: CGFloat = 0.40      // 焦点带在视口高度的位置(从顶 40%, 靠上更贴近镜头视线)
-  private let minScale: CGFloat = 0.60       // 最远行缩到 0.60(只缩小不放大 → 文字永远清晰不糊)
-  private let minOpacity: CGFloat = 0.16     // 最远行透明度
-  private let lineGap: CGFloat = 10          // 行间距
-  private let hPad: CGFloat = 24             // 左右留白
-  var enableBlur: Bool = true               // 远行轻虚化(bucket 化, 只在档位变化时更新, 省性能)
-  var enableKaraoke: Bool = true            // 卡拉OK 逐字点亮(随滚动进度, 非语音同步)
+  private let focusFrac: CGFloat = 0.40
+  private let minScale: CGFloat = 0.60
+  private let minOpacity: CGFloat = 0.16
+  private let lineGap: CGFloat = 10
+  private let hPad: CGFloat = 24
 
   private var lineLayers: [CATextLayer] = []
-  private var lineCenters: [CGFloat] = []    // 每行在"内容坐标"里的中心 y(从内容顶, 向下增)
-  private var lineHeights: [CGFloat] = []    // 每行渲染高度(卡拉OK 推进带宽用)
-  private var lineTexts: [String] = []       // 每行纯文本(卡拉OK 逐字重建用)
-  private var lineCharCounts: [Int] = []     // 每行字数(NSString length)
-  private var lineHi: [Int] = []             // 当前已点亮到第几字(-1 = 纯色, 避免每帧重建)
-  private var lineBuckets: [Int] = []        // 每行当前虚化档位(避免每帧重设 filter)
-  private var contentHeight: CGFloat = 0
+  private var lineCenters: [CGFloat] = []
+  private var lineHeights: [CGFloat] = []
+  private var lineTexts: [String] = []
+  private var lineCharCounts: [Int] = []
+  private var lineHi: [Int] = []
+  private var lineBuckets: [Int] = []
   private var curFont: NSFont = .systemFont(ofSize: 30, weight: .semibold)
   private let curPara: NSMutableParagraphStyle = {
     let p = NSMutableParagraphStyle(); p.alignment = .center; p.lineBreakMode = .byWordWrapping; return p
   }()
 
-  /// 念稿总进度 0...1(火箭赛道用)。
   var progress: CGFloat { resetAt > 0 ? max(0, min(1, scrollOffset / resetAt)) : 0 }
+  /// 焦点中心在视口里的 y(从顶), 上层放精灵/火花用。
+  var focusViewportY: CGFloat { bounds.height * focusFrac }
 
-  override var isFlipped: Bool { true }       // 顶部为原点, y 向下增 → 文字自上而下、向上滚
+  override var isFlipped: Bool { true }
 
   override init(frame frameRect: NSRect) {
     super.init(frame: frameRect)
@@ -74,7 +70,6 @@ private final class LinesView: NSView {
     return NSFont.systemFont(ofSize: fontSize, weight: .semibold)
   }
 
-  /// 重建所有行 layer(脚本/字号/字体/宽度变化时)。
   func rebuild() {
     lineLayers.forEach { $0.removeFromSuperlayer() }
     lineLayers.removeAll(); lineCenters.removeAll(); lineBuckets.removeAll()
@@ -82,31 +77,24 @@ private final class LinesView: NSView {
 
     let wrapWidth = max(40, bounds.width - 2 * hPad)
     curFont = makeFont()
-
-    let lines = script.components(separatedBy: "\n")
-    var cursor: CGFloat = 0
     let emptyGap = fontSize * 0.7
+    var cursor: CGFloat = 0
 
-    for raw in lines {
-      let text = raw
-      if text.trimmingCharacters(in: .whitespaces).isEmpty {
-        cursor += emptyGap + lineGap   // 空行 = 段落间隙
-        continue
-      }
+    for raw in script.components(separatedBy: "\n") {
+      if raw.trimmingCharacters(in: .whitespaces).isEmpty { cursor += emptyGap + lineGap; continue }
       let attrs: [NSAttributedString.Key: Any] = [.font: curFont, .paragraphStyle: curPara]
-      let bounding = (text as NSString).boundingRect(
+      let bounding = (raw as NSString).boundingRect(
         with: NSSize(width: wrapWidth, height: .greatestFiniteMagnitude),
         options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: attrs)
       let h = ceil(bounding.height) + 4
 
       let tl = CATextLayer()
-      tl.string = NSAttributedString(string: text, attributes: [
-        .font: curFont, .paragraphStyle: curPara, .foregroundColor: textColor,
-      ])
+      tl.string = NSAttributedString(string: raw, attributes: [
+        .font: curFont, .paragraphStyle: curPara, .foregroundColor: textColor])
       tl.isWrapped = true
       tl.alignmentMode = .center
       tl.truncationMode = .none
-      tl.contentsScale = scale2x       // 只缩小不放大, 当前行按此清晰度渲染
+      tl.contentsScale = scale2x
       tl.anchorPoint = CGPoint(x: 0.5, y: 0.5)
       tl.bounds = CGRect(x: 0, y: 0, width: wrapWidth, height: h)
       tl.masksToBounds = false
@@ -115,53 +103,42 @@ private final class LinesView: NSView {
       lineLayers.append(tl)
       lineCenters.append(cursor + h / 2)
       lineHeights.append(h)
-      lineTexts.append(text)
-      lineCharCounts.append((text as NSString).length)
+      lineTexts.append(raw)
+      lineCharCounts.append((raw as NSString).length)
       lineHi.append(-1)
       lineBuckets.append(-1)
       cursor += h + lineGap
     }
-    contentHeight = cursor
     updateDepth()
   }
 
-  /// 把第 i 行渲成"前 n 字高亮色、其余正常色"(卡拉OK)。
   private func applyKaraoke(_ i: Int, _ n: Int) {
     let s = lineTexts[i]
     let full = NSMutableAttributedString(string: s, attributes: [
-      .font: curFont, .paragraphStyle: curPara, .foregroundColor: textColor,
-    ])
+      .font: curFont, .paragraphStyle: curPara, .foregroundColor: textColor])
     let len = (s as NSString).length
     if n > 0 { full.addAttribute(.foregroundColor, value: highlightColor, range: NSRange(location: 0, length: min(n, len))) }
     lineLayers[i].string = full
   }
 
-  /// 把第 i 行渲成纯正常色。
   private func applyPlain(_ i: Int) {
     lineLayers[i].string = NSAttributedString(string: lineTexts[i], attributes: [
-      .font: curFont, .paragraphStyle: curPara, .foregroundColor: textColor,
-    ])
+      .font: curFont, .paragraphStyle: curPara, .foregroundColor: textColor])
   }
 
-  /// 只改颜色, 不重建几何。
   private func recolor() {
     CATransaction.begin(); CATransaction.setDisableActions(true)
     for i in lineLayers.indices { applyPlain(i); lineHi[i] = -1 }
     CATransaction.commit()
   }
 
-  /// 滚到尽头后回绕的阈值。
   var resetAt: CGFloat {
     guard let last = lineCenters.last, let first = lineCenters.first else { return 0 }
     return (last - first) + bounds.height * 0.55
   }
 
-  override func layout() {
-    super.layout()
-    rebuild()   // 宽度变 → 换行变 → 重建
-  }
+  override func layout() { super.layout(); rebuild() }
 
-  /// 每帧: 按距焦点的距离刷新 position/scale/opacity(+轻虚化)。
   func updateDepth() {
     guard !lineLayers.isEmpty, let first = lineCenters.first else { return }
     let H = bounds.height
@@ -174,16 +151,12 @@ private final class LinesView: NSView {
       let centerY = focusY + (lineCenters[i] - first) - scrollOffset
       let d = abs(centerY - focusY)
       var t = min(1, d / falloff)
-      t = t * t * (3 - 2 * t)                       // smoothstep, 焦点附近更突出
-
-      let scale = 1 - (1 - minScale) * t
-      let opacity = 1 - (1 - minOpacity) * t
+      t = t * t * (3 - 2 * t)
 
       tl.position = CGPoint(x: centerX, y: centerY)
-      tl.transform = CATransform3DMakeScale(scale, scale, 1)
-      tl.opacity = Float(opacity)
+      tl.transform = CATransform3DMakeScale(1 - (1 - minScale) * t, 1 - (1 - minScale) * t, 1)
+      tl.opacity = Float(1 - (1 - minOpacity) * t)
 
-      // 卡拉OK: 行随滚动经过焦点带 → 逐字点亮(非语音, 跟滚动进度同步)
       if enableKaraoke {
         let band = max(36, lineHeights[i])
         let readP = max(0, min(1, (focusY + band / 2 - centerY) / band))
@@ -192,21 +165,19 @@ private final class LinesView: NSView {
           let n = max(0, min(count, Int((readP * CGFloat(count)).rounded())))
           if lineHi[i] != n { applyKaraoke(i, n); lineHi[i] = n }
         } else if lineHi[i] != -1 {
+          if readP >= 0.999 && lineHi[i] >= 1 { onLineComplete?() }  // 整行念完 → 连击/火花
           applyPlain(i); lineHi[i] = -1
         }
       }
 
       if enableBlur {
-        let bucket = Int((t * 4).rounded(.down))    // 0...4, 只在档位变化时重设 filter
+        let bucket = Int((t * 4).rounded(.down))
         if bucket != lineBuckets[i] {
           lineBuckets[i] = bucket
           let radius = CGFloat(bucket) * 1.1
           if radius > 0.01, let f = CIFilter(name: "CIGaussianBlur") {
-            f.setValue(radius, forKey: kCIInputRadiusKey)
-            tl.filters = [f]
-          } else {
-            tl.filters = []
-          }
+            f.setValue(radius, forKey: kCIInputRadiusKey); tl.filters = [f]
+          } else { tl.filters = [] }
         }
       }
     }
@@ -214,20 +185,36 @@ private final class LinesView: NSView {
   }
 }
 
+// MARK: - 特效层(火花/烟花/爱心, 不挡鼠标拖窗)
+
+@MainActor
+private final class FXView: NSView {
+  override init(frame frameRect: NSRect) { super.init(frame: frameRect); wantsLayer = true }
+  required init?(coder: NSCoder) { fatalError() }
+  override func hitTest(_ point: NSPoint) -> NSView? { nil }   // 事件穿透 → 不挡拖动/点击
+}
+
 // MARK: - 提词器窗口
 
 @MainActor
 final class TeleprompterWindow: NSWindow {
-  private let effectView = NSVisualEffectView()    // 毛玻璃背景
-  private let linesView = LinesView()              // 3D 逐行显示
-  private let editScroll = NSScrollView()          // 编辑态: 粘贴/输入稿子
+  private let effectView = NSVisualEffectView()
+  private let skyView = NSView()                    // 天色(随进度 白天→黄昏→星空)
+  private let skyGradient = CAGradientLayer()
+  private let linesView = LinesView()
+  private let fxView = FXView()                     // 火花/烟花/爱心
+  private let editScroll = NSScrollView()
   private let editText = NSTextView()
   private let controlBar = NSView()
-  private let rocketBar = NSView()                 // 底部火箭进度赛道
+
+  // 底部"光之路"+精灵+连击
+  private let journeyBar = NSView()
   private let trackLayer = CALayer()
   private let trackFill = CALayer()
-  private let rocketLayer = CATextLayer()
-  private let flagLayer = CATextLayer()
+  private let spriteLayer = CATextLayer()           // 🐱 小猫精灵(沿路走)
+  private let flagLayer = CATextLayer()             // 🏁 终点
+  private let comboLayer = CATextLayer()            // 🔥 连击数
+
   private var playPauseButton: NSButton!
   private var editButton: NSButton!
   private var timer: Timer?
@@ -235,15 +222,19 @@ final class TeleprompterWindow: NSWindow {
   private var playing = true
   private var editing = false
 
+  // 游戏状态
+  private var combo = 0
+  private var frameTick = 0
+  private var finished = false
+
   private let placeholder = """
-  把逐字稿粘贴进来 — 点上面 ✎ 进入编辑
+  把逐字稿粘贴进来 — 点上面 ✎ 编辑，或直接 ⌘V
 
   提词器只有你看得到，录屏和直播的观众都看不到。
 
-  当前念的这一行最大最亮，上下行往里缩、变暗，像舞台追光。照着念就行，保持微笑，看镜头。
+  跟着滚动的节奏念：当前这行最大最亮，念到的字会点亮，念完一行火花一闪、连击 +1。小猫陪你走过这趟光之路，念到结尾会放烟花。
   """
 
-  /// 是否对录屏/直播隐形。
   var hiddenFromCapture: Bool = false {
     didSet { sharingType = hiddenFromCapture ? .none : .readOnly }
   }
@@ -254,25 +245,36 @@ final class TeleprompterWindow: NSWindow {
     sharingType = .readOnly
     isOpaque = false
     backgroundColor = .clear
-    hasShadow = true                                // 毛玻璃岛有淡阴影更精致
+    hasShadow = true
     level = NSWindow.Level(rawValue: NSWindow.Level.floating.rawValue + 1)
     collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-    isMovableByWindowBackground = true              // 拖背景挪到任意位置(自由浮动岛)
+    isMovableByWindowBackground = true
 
     contentView?.wantsLayer = true
     contentView?.layer?.cornerRadius = 16
     contentView?.layer?.masksToBounds = true
 
-    // 毛玻璃: 后面窗口/桌面被模糊化, 不透出清晰内容叠字
+    // 毛玻璃(最底)
     effectView.material = .hudWindow
     effectView.blendingMode = .behindWindow
     effectView.state = .active
     effectView.wantsLayer = true
     contentView?.addSubview(effectView)
 
-    // 3D 逐行显示
+    // 天色(玻璃之上、文字之下)
+    skyView.wantsLayer = true
+    skyGradient.startPoint = CGPoint(x: 0.5, y: 0)
+    skyGradient.endPoint = CGPoint(x: 0.5, y: 1)
+    skyView.layer?.addSublayer(skyGradient)
+    contentView?.addSubview(skyView)
+
+    // 3D 文字
     linesView.script = placeholder
+    linesView.onLineComplete = { [weak self] in self?.onLineComplete() }
     contentView?.addSubview(linesView)
+
+    // 特效(文字之上)
+    contentView?.addSubview(fxView)
 
     // 编辑态(默认隐藏)
     editScroll.hasVerticalScroller = true
@@ -292,53 +294,17 @@ final class TeleprompterWindow: NSWindow {
     contentView?.addSubview(editScroll)
 
     setupControlBar()
-    setupRocketTrack()
+    setupJourney()
     layoutContents()
     startScrolling()
   }
 
-  // MARK: - 底部火箭进度赛道
-
-  private func setupRocketTrack() {
-    rocketBar.wantsLayer = true
-    trackLayer.backgroundColor = NSColor.white.withAlphaComponent(0.16).cgColor
-    trackLayer.cornerRadius = 2
-    trackFill.backgroundColor = NSColor.systemTeal.withAlphaComponent(0.6).cgColor
-    trackFill.cornerRadius = 2
-    let scale = screenScale
-    for (l, s, sz) in [(rocketLayer, "🚀", 17.0), (flagLayer, "🏁", 15.0)] {
-      l.string = s
-      l.fontSize = sz
-      l.alignmentMode = .center
-      l.contentsScale = scale
-      l.anchorPoint = CGPoint(x: 0.5, y: 0.5)
-      l.bounds = CGRect(x: 0, y: 0, width: 24, height: 24)
-    }
-    rocketBar.layer?.addSublayer(trackLayer)
-    rocketBar.layer?.addSublayer(trackFill)
-    rocketBar.layer?.addSublayer(flagLayer)
-    rocketBar.layer?.addSublayer(rocketLayer)
-    contentView?.addSubview(rocketBar)
-  }
-
-  private var screenScale: CGFloat { screen?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2 }
-
-  private func updateRocket() {
-    let p = linesView.progress
-    let t = trackLayer.frame
-    CATransaction.begin(); CATransaction.setDisableActions(true)
-    trackFill.frame = CGRect(x: t.minX, y: t.minY, width: max(0.1, t.width * p), height: t.height)
-    rocketLayer.position = CGPoint(x: t.minX + t.width * p, y: t.midY)
-    CATransaction.commit()
-  }
-
-  // MARK: - 右上角控制条
+  // MARK: - 控制条
 
   private func setupControlBar() {
     func mkBtn(_ title: String, _ sel: Selector) -> NSButton {
       let b = NSButton(title: title, target: self, action: sel)
-      b.isBordered = false
-      b.contentTintColor = .white
+      b.isBordered = false; b.contentTintColor = .white
       b.font = NSFont.systemFont(ofSize: 13, weight: .bold)
       b.wantsLayer = true
       b.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.16).cgColor
@@ -348,45 +314,68 @@ final class TeleprompterWindow: NSWindow {
     playPauseButton = mkBtn("⏸", #selector(togglePlay))
     editButton = mkBtn("✎", #selector(toggleEdit))
     let stack = NSStackView(views: [
-      playPauseButton,
-      editButton,
-      mkBtn("小", #selector(sizeSmall)),
-      mkBtn("中", #selector(sizeMedium)),
-      mkBtn("大", #selector(sizeLarge)),
-      mkBtn("清", #selector(clearScript)),
-      mkBtn("✕", #selector(closePrompter)),
+      playPauseButton, editButton,
+      mkBtn("小", #selector(sizeSmall)), mkBtn("中", #selector(sizeMedium)), mkBtn("大", #selector(sizeLarge)),
+      mkBtn("清", #selector(clearScript)), mkBtn("✕", #selector(closePrompter)),
     ])
-    stack.orientation = .horizontal
-    stack.spacing = 5
-    stack.distribution = .fillEqually
+    stack.orientation = .horizontal; stack.spacing = 5; stack.distribution = .fillEqually
     controlBar.addSubview(stack)
     stack.frame = controlBar.bounds
     stack.autoresizingMask = [.width, .height]
     contentView?.addSubview(controlBar)
   }
 
+  // MARK: - 底部光之路 + 精灵 + 连击
+
+  private func setupJourney() {
+    journeyBar.wantsLayer = true
+    trackLayer.backgroundColor = NSColor.white.withAlphaComponent(0.16).cgColor
+    trackLayer.cornerRadius = 2
+    trackFill.backgroundColor = NSColor.systemTeal.withAlphaComponent(0.7).cgColor
+    trackFill.cornerRadius = 2
+    let s = screenScale
+    spriteLayer.string = "🐱"; spriteLayer.fontSize = 20
+    flagLayer.string = "🏁"; flagLayer.fontSize = 15
+    for l in [spriteLayer, flagLayer] {
+      l.alignmentMode = .center; l.contentsScale = s
+      l.anchorPoint = CGPoint(x: 0.5, y: 0.5); l.bounds = CGRect(x: 0, y: 0, width: 28, height: 28)
+    }
+    comboLayer.fontSize = 13; comboLayer.alignmentMode = .left; comboLayer.contentsScale = s
+    comboLayer.anchorPoint = CGPoint(x: 0, y: 0.5); comboLayer.bounds = CGRect(x: 0, y: 0, width: 90, height: 20)
+    comboLayer.string = ""
+    journeyBar.layer?.addSublayer(trackLayer)
+    journeyBar.layer?.addSublayer(trackFill)
+    journeyBar.layer?.addSublayer(flagLayer)
+    journeyBar.layer?.addSublayer(spriteLayer)
+    journeyBar.layer?.addSublayer(comboLayer)
+    contentView?.addSubview(journeyBar)
+  }
+
+  private var screenScale: CGFloat { screen?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2 }
+
   private func layoutContents() {
     guard let cv = contentView else { return }
     let w = cv.bounds.width, h = cv.bounds.height
-    let barH: CGFloat = 24, barW: CGFloat = 238
-    let rocketH: CGFloat = 24
+    let barH: CGFloat = 24, barW: CGFloat = 238, journeyH: CGFloat = 30
     effectView.frame = cv.bounds
+    skyView.frame = cv.bounds
+    skyGradient.frame = cv.bounds
+    fxView.frame = cv.bounds
     controlBar.frame = NSRect(x: w - barW - 6, y: h - barH - 6, width: barW, height: barH)
 
-    // 底部赛道
-    rocketBar.frame = NSRect(x: 0, y: 2, width: w, height: rocketH)
-    let pad: CGFloat = 18, flagW: CGFloat = 20, trackY: CGFloat = 10, trackH: CGFloat = 4
-    let left = pad, right = w - pad - flagW
+    journeyBar.frame = NSRect(x: 0, y: 2, width: w, height: journeyH)
+    let comboW: CGFloat = 64, flagW: CGFloat = 22, trackY: CGFloat = 13, trackH: CGFloat = 4
+    let left = 12 + comboW, right = w - 14 - flagW
+    comboLayer.position = CGPoint(x: 12, y: trackY + trackH / 2)
     trackLayer.frame = CGRect(x: left, y: trackY, width: max(1, right - left), height: trackH)
     flagLayer.position = CGPoint(x: right + flagW / 2, y: trackY + trackH / 2)
-    updateRocket()
 
-    let contentRect = NSRect(x: 0, y: rocketH + 4, width: w, height: h - barH - rocketH - 14)
+    let contentRect = NSRect(x: 0, y: journeyH + 4, width: w, height: h - barH - journeyH - 14)
     linesView.frame = contentRect
     editScroll.frame = contentRect.insetBy(dx: 16, dy: 12)
+    updateJourney()
   }
 
-  /// 显示在顶部中央(靠近摄像头), 之后可自由拖动。
   func show() {
     if let screen = NSScreen.main {
       let f = screen.visibleFrame
@@ -397,7 +386,7 @@ final class TeleprompterWindow: NSWindow {
 
   var overlayWindowID: CGWindowID { CGWindowID(windowNumber) }
 
-  // MARK: - 滚动
+  // MARK: - 滚动 + 游戏循环
 
   private func startScrolling() {
     timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
@@ -406,11 +395,173 @@ final class TeleprompterWindow: NSWindow {
   }
 
   private func tick() {
+    frameTick += 1
     guard playing, !editing else { return }
     linesView.scrollOffset += speed
-    if linesView.scrollOffset > linesView.resetAt { linesView.scrollOffset = 0 }
+    if linesView.scrollOffset > linesView.resetAt {     // 念完一遍 → 回到开头, 重置游戏
+      linesView.scrollOffset = 0
+      combo = 0; finished = false
+      refreshCombo(pulse: false)
+    }
     linesView.updateDepth()
-    updateRocket()
+    updateJourney()
+
+    if !finished, linesView.progress >= 0.992 {          // 抵达终点 → 烟花庆祝
+      finished = true
+      spriteLayer.string = "🥳"
+      fireworks()
+    }
+  }
+
+  /// 进度条填充 + 精灵沿路走 + 上下轻轻颠(陪走感) + 天色随进度。
+  private func updateJourney() {
+    let p = linesView.progress
+    let t = trackLayer.frame
+    let bob = sin(CGFloat(frameTick) * 0.18) * 2.5
+    CATransaction.begin(); CATransaction.setDisableActions(true)
+    trackFill.frame = CGRect(x: t.minX, y: t.minY, width: max(0.1, t.width * p), height: t.height)
+    spriteLayer.position = CGPoint(x: t.minX + t.width * p, y: t.midY + 4 + (playing ? bob : 0))
+    skyGradient.colors = skyColors(p)
+    CATransaction.commit()
+  }
+
+  /// 天色: 白天(浅蓝) → 黄昏(橙紫) → 星空(深蓝)。半透明叠在毛玻璃上, 保可读。
+  private func skyColors(_ p: CGFloat) -> [CGColor] {
+    func mix(_ a: NSColor, _ b: NSColor, _ k: CGFloat) -> NSColor {
+      let k = max(0, min(1, k))
+      return NSColor(srgbRed: a.redComponent + (b.redComponent - a.redComponent) * k,
+                     green: a.greenComponent + (b.greenComponent - a.greenComponent) * k,
+                     blue: a.blueComponent + (b.blueComponent - a.blueComponent) * k,
+                     alpha: a.alphaComponent + (b.alphaComponent - a.alphaComponent) * k)
+    }
+    let dayTop = NSColor(srgbRed: 0.40, green: 0.66, blue: 1.0, alpha: 0.32)
+    let dayBot = NSColor(srgbRed: 0.60, green: 0.82, blue: 1.0, alpha: 0.10)
+    let duskTop = NSColor(srgbRed: 1.0, green: 0.52, blue: 0.36, alpha: 0.34)
+    let duskBot = NSColor(srgbRed: 0.55, green: 0.35, blue: 0.62, alpha: 0.16)
+    let nightTop = NSColor(srgbRed: 0.07, green: 0.10, blue: 0.32, alpha: 0.42)
+    let nightBot = NSColor(srgbRed: 0.18, green: 0.14, blue: 0.40, alpha: 0.24)
+    let top: NSColor, bot: NSColor
+    if p < 0.5 { top = mix(dayTop, duskTop, p / 0.5); bot = mix(dayBot, duskBot, p / 0.5) }
+    else { top = mix(duskTop, nightTop, (p - 0.5) / 0.5); bot = mix(duskBot, nightBot, (p - 0.5) / 0.5) }
+    return [top.cgColor, bot.cgColor]
+  }
+
+  // MARK: - 连击 / 火花
+
+  /// 念完一行 → 连击 +1、火花、精灵蹦一下; 每 5 连击撒爱心。
+  private func onLineComplete() {
+    guard playing else { return }
+    combo += 1
+    refreshCombo(pulse: true)
+    spark(at: focusPoint())
+    hopSprite()
+    if combo % 5 == 0 { hearts(at: spritePointInFX()) }
+  }
+
+  private func refreshCombo(pulse: Bool) {
+    let s = NSMutableAttributedString(string: combo >= 2 ? "🔥 \(combo) COMBO" : "",
+      attributes: [.font: NSFont.systemFont(ofSize: 13, weight: .heavy),
+                   .foregroundColor: NSColor.systemYellow])
+    comboLayer.string = s
+    guard pulse, combo >= 2 else { return }
+    let a = CABasicAnimation(keyPath: "transform.scale")
+    a.fromValue = 1.5; a.toValue = 1.0; a.duration = 0.25
+    comboLayer.add(a, forKey: "pop")
+  }
+
+  /// 焦点行中心在 fxView 里的点(非翻转, 左下原点)。
+  private func focusPoint() -> CGPoint {
+    let yTop = linesView.focusViewportY            // 从顶
+    return CGPoint(x: fxView.bounds.midX, y: linesView.frame.maxY - yTop)
+  }
+  private func spritePointInFX() -> CGPoint {
+    CGPoint(x: spriteLayer.position.x, y: journeyBar.frame.minY + spriteLayer.position.y)
+  }
+
+  private func hopSprite() {
+    let a = CABasicAnimation(keyPath: "position.y")
+    let y = spriteLayer.position.y
+    a.fromValue = y; a.toValue = y + 9; a.duration = 0.16
+    a.autoreverses = true; a.timingFunction = CAMediaTimingFunction(name: .easeOut)
+    spriteLayer.add(a, forKey: "hop")
+  }
+
+  /// 一簇短促火花。
+  private func spark(at p: CGPoint) {
+    let emitter = CAEmitterLayer()
+    emitter.emitterPosition = p
+    emitter.emitterShape = .point
+    emitter.birthRate = 1
+    let cell = CAEmitterCell()
+    cell.birthRate = 60; cell.lifetime = 0.5; cell.velocity = 90; cell.velocityRange = 40
+    cell.emissionRange = .pi * 2; cell.scale = 0.10; cell.scaleRange = 0.05
+    cell.alphaSpeed = -2.0; cell.contents = dotImage(.systemYellow)
+    emitter.emitterCells = [cell]
+    fxView.layer?.addSublayer(emitter)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) { emitter.birthRate = 0 }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { emitter.removeFromSuperlayer() }
+  }
+
+  /// 爱心冒泡(连击里程碑)。
+  private func hearts(at p: CGPoint) {
+    let emitter = CAEmitterLayer()
+    emitter.emitterPosition = p
+    emitter.emitterShape = .point
+    emitter.birthRate = 1
+    let cell = CAEmitterCell()
+    cell.birthRate = 14; cell.lifetime = 1.0; cell.velocity = 50; cell.velocityRange = 20
+    cell.emissionLongitude = -.pi / 2; cell.emissionRange = .pi / 5
+    cell.yAcceleration = -40; cell.scale = 0.5; cell.scaleRange = 0.2; cell.alphaSpeed = -1.0
+    cell.contents = emojiImage("❤️", size: 22)
+    emitter.emitterCells = [cell]
+    fxView.layer?.addSublayer(emitter)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { emitter.birthRate = 0 }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) { emitter.removeFromSuperlayer() }
+  }
+
+  /// 念完撒烟花。
+  private func fireworks() {
+    let colors: [NSColor] = [.systemPink, .systemYellow, .systemTeal, .systemGreen, .systemOrange]
+    for (i, c) in colors.enumerated() {
+      let x = fxView.bounds.width * (0.2 + 0.15 * CGFloat(i))
+      let p = CGPoint(x: x, y: fxView.bounds.height * 0.6)
+      DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.12) { [weak self] in
+        self?.burst(at: p, color: c)
+      }
+    }
+  }
+
+  private func burst(at p: CGPoint, color: NSColor) {
+    let emitter = CAEmitterLayer()
+    emitter.emitterPosition = p; emitter.emitterShape = .point; emitter.birthRate = 1
+    let cell = CAEmitterCell()
+    cell.birthRate = 200; cell.lifetime = 0.9; cell.velocity = 150; cell.velocityRange = 60
+    cell.emissionRange = .pi * 2; cell.yAcceleration = 80
+    cell.scale = 0.12; cell.scaleRange = 0.06; cell.alphaSpeed = -1.1; cell.contents = dotImage(color)
+    emitter.emitterCells = [cell]
+    fxView.layer?.addSublayer(emitter)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { emitter.birthRate = 0 }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) { emitter.removeFromSuperlayer() }
+  }
+
+  // 粒子贴图
+  private func dotImage(_ color: NSColor) -> CGImage? {
+    let d = 12
+    let img = NSImage(size: NSSize(width: d, height: d))
+    img.lockFocus()
+    color.setFill()
+    NSBezierPath(ovalIn: NSRect(x: 1, y: 1, width: d - 2, height: d - 2)).fill()
+    img.unlockFocus()
+    var r = NSRect(x: 0, y: 0, width: d, height: d)
+    return img.cgImage(forProposedRect: &r, context: nil, hints: nil)
+  }
+  private func emojiImage(_ s: String, size: CGFloat) -> CGImage? {
+    let img = NSImage(size: NSSize(width: size, height: size))
+    img.lockFocus()
+    (s as NSString).draw(at: .zero, withAttributes: [.font: NSFont.systemFont(ofSize: size * 0.85)])
+    img.unlockFocus()
+    var r = NSRect(x: 0, y: 0, width: size, height: size)
+    return img.cgImage(forProposedRect: &r, context: nil, hints: nil)
   }
 
   // MARK: - 控制条 actions
@@ -418,23 +569,20 @@ final class TeleprompterWindow: NSWindow {
   @objc private func togglePlay() {
     playing.toggle()
     playPauseButton.title = playing ? "⏸" : "▶"
+    if !finished { spriteLayer.string = playing ? "🐱" : "😴" }   // 暂停打盹
   }
 
-  /// 进/出编辑态: 编辑时显示可粘贴的文本框, 退出即重建 3D 显示。
   @objc private func toggleEdit() {
     editing.toggle()
     if editing {
       editText.string = linesView.script
-      editScroll.isHidden = false
-      linesView.isHidden = true
-      makeKeyAndOrderFront(nil)
-      makeFirstResponder(editText)
+      editScroll.isHidden = false; linesView.isHidden = true; fxView.isHidden = true
+      makeKeyAndOrderFront(nil); makeFirstResponder(editText)
     } else {
-      let s = editText.string
-      linesView.script = s.isEmpty ? "" : s
-      linesView.scrollOffset = 0
-      editScroll.isHidden = true
-      linesView.isHidden = false
+      linesView.script = editText.string
+      linesView.scrollOffset = 0; combo = 0; finished = false; refreshCombo(pulse: false)
+      spriteLayer.string = playing ? "🐱" : "😴"
+      editScroll.isHidden = true; linesView.isHidden = false; fxView.isHidden = false
     }
     editButton.title = editing ? "✓" : "✎"
   }
@@ -443,12 +591,8 @@ final class TeleprompterWindow: NSWindow {
   @objc private func sizeMedium() { resize(to: 680) }
   @objc private func sizeLarge() { resize(to: 860) }
 
-  @objc private func closePrompter() {
-    timer?.invalidate()
-    orderOut(nil)
-  }
+  @objc private func closePrompter() { timer?.invalidate(); orderOut(nil) }
 
-  /// 调框大小: 保持顶部 + 重新布局(行会按新宽度重排)。
   private func resize(to width: CGFloat) {
     let h = width * 0.47
     let top = frame.maxY, midX = frame.midX
@@ -459,15 +603,13 @@ final class TeleprompterWindow: NSWindow {
 
   override var canBecomeKey: Bool { true }
 
-  /// ⌘V 直接粘贴: 显示态下复制好稿子按 ⌘V 即变成滚动稿(免点 ✎); 编辑态走正常粘贴。
+  /// ⌘V 直接粘稿(显示态), 编辑态走正常粘贴。
   override func keyDown(with event: NSEvent) {
     let cmdV = event.modifierFlags.contains(.command) && event.charactersIgnoringModifiers?.lowercased() == "v"
-    if cmdV, !editing {
-      if let s = NSPasteboard.general.string(forType: .string), !s.isEmpty {
-        linesView.script = s
-        linesView.scrollOffset = 0
-        return
-      }
+    if cmdV, !editing, let s = NSPasteboard.general.string(forType: .string), !s.isEmpty {
+      linesView.script = s
+      linesView.scrollOffset = 0; combo = 0; finished = false; refreshCombo(pulse: false)
+      return
     }
     super.keyDown(with: event)
   }
@@ -476,16 +618,14 @@ final class TeleprompterWindow: NSWindow {
 
   override func rightMouseUp(with event: NSEvent) {
     let menu = NSMenu()
-
     let importItem = NSMenuItem(title: "Import .txt 导入逐字稿", action: #selector(importScript), keyEquivalent: "")
     importItem.target = self; menu.addItem(importItem)
     let clearItem = NSMenuItem(title: "Clear 清空", action: #selector(clearScript), keyEquivalent: "")
     clearItem.target = self; menu.addItem(clearItem)
     menu.addItem(.separator())
 
-    // 速度
     let speedSub = NSMenu()
-    for (t, v) in [("0.3 慢", 0.3), ("0.6", 0.6), ("1.0", 1.0), ("1.5", 1.5), ("2.0 快", 2.0)] {
+    for (t, v) in [("0.5 慢", 0.5), ("0.6", 0.6), ("0.75", 0.75), ("0.9 快", 0.9)] {
       let i = NSMenuItem(title: t, action: #selector(setSpeed(_:)), keyEquivalent: "")
       i.target = self; i.representedObject = v
       i.state = (abs(speed - CGFloat(v)) < 0.01) ? .on : .off
@@ -494,7 +634,6 @@ final class TeleprompterWindow: NSWindow {
     let si = NSMenuItem(title: "Speed 速度", action: nil, keyEquivalent: "")
     menu.addItem(si); menu.setSubmenu(speedSub, for: si)
 
-    // 字号
     let fontSub = NSMenu()
     let cur = linesView.fontSize
     for v in [16.0, 18.0, 20.0, 24.0, 28.0, 32.0, 40.0, 48.0, 56.0] {
@@ -506,12 +645,10 @@ final class TeleprompterWindow: NSWindow {
     let fi = NSMenuItem(title: "Font 字号", action: nil, keyEquivalent: "")
     menu.addItem(fi); menu.setSubmenu(fontSub, for: fi)
 
-    // 字色
     let colorSub = NSMenu()
     let colors: [(String, NSColor)] = [
       ("White 白", .white), ("Yellow 黄", .systemYellow),
-      ("Green 绿", .systemGreen), ("Cyan 青", .systemTeal), ("Pink 粉", .systemPink),
-    ]
+      ("Green 绿", .systemGreen), ("Cyan 青", .systemTeal), ("Pink 粉", .systemPink)]
     for (t, c) in colors {
       let i = NSMenuItem(title: t, action: #selector(setTextColor(_:)), keyEquivalent: "")
       i.target = self; i.representedObject = c; colorSub.addItem(i)
@@ -524,34 +661,20 @@ final class TeleprompterWindow: NSWindow {
 
   @objc private func importScript() {
     let panel = NSOpenPanel()
-    panel.allowsMultipleSelection = false
-    panel.canChooseDirectories = false
+    panel.allowsMultipleSelection = false; panel.canChooseDirectories = false
     panel.allowedContentTypes = [.plainText, .text]
     panel.message = "选一个 .txt 逐字稿文件"
-    if panel.runModal() == .OK, let url = panel.url,
-       let text = try? String(contentsOf: url, encoding: .utf8) {
-      if editing { toggleEdit() }   // 导入后退出编辑态直接显示
+    if panel.runModal() == .OK, let url = panel.url, let text = try? String(contentsOf: url, encoding: .utf8) {
+      if editing { toggleEdit() }
       linesView.script = text
-      linesView.scrollOffset = 0
+      linesView.scrollOffset = 0; combo = 0; finished = false; refreshCombo(pulse: false)
     }
   }
 
-  @objc private func clearScript() {
-    if editing { editText.string = "" } else { linesView.script = "" }
-  }
-
-  @objc private func setSpeed(_ s: NSMenuItem) {
-    if let v = s.representedObject as? Double { speed = CGFloat(v) }
-  }
-
-  @objc private func setFontSize(_ s: NSMenuItem) {
-    if let v = s.representedObject as? Double { linesView.fontSize = CGFloat(v) }
-  }
-
+  @objc private func clearScript() { if editing { editText.string = "" } else { linesView.script = "" } }
+  @objc private func setSpeed(_ s: NSMenuItem) { if let v = s.representedObject as? Double { speed = CGFloat(v) } }
+  @objc private func setFontSize(_ s: NSMenuItem) { if let v = s.representedObject as? Double { linesView.fontSize = CGFloat(v) } }
   @objc private func setTextColor(_ s: NSMenuItem) {
-    if let c = s.representedObject as? NSColor {
-      linesView.textColor = c
-      editText.textColor = c
-    }
+    if let c = s.representedObject as? NSColor { linesView.textColor = c; editText.textColor = c }
   }
 }

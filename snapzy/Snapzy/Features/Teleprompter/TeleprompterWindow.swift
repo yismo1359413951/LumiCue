@@ -388,15 +388,24 @@ final class TeleprompterWindow: NSWindow {
     isMovableByWindowBackground = true
 
     contentView?.wantsLayer = true
-    contentView?.layer?.cornerRadius = 16
+    contentView?.layer?.cornerRadius = 24          // 灵动岛: 大圆角药丸
     contentView?.layer?.masksToBounds = true
+    contentView?.layer?.borderWidth = 1            // 精致细描边
+    contentView?.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
 
-    // 毛玻璃(最底)
+    // 毛玻璃(最底) — 深邃黑玻璃
     effectView.material = .hudWindow
     effectView.blendingMode = .behindWindow
     effectView.state = .active
     effectView.wantsLayer = true
     contentView?.addSubview(effectView)
+
+    // 黑玻璃叠层: 压暗成灵动岛那种深邃黑(在毛玻璃之上、天色之下)
+    let darkLayer = NSView(); darkLayer.wantsLayer = true
+    darkLayer.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.42).cgColor
+    darkLayer.autoresizingMask = [.width, .height]
+    darkLayer.frame = contentView?.bounds ?? .zero
+    contentView?.addSubview(darkLayer)
 
     // 天色(玻璃之上、文字之下)
     skyView.wantsLayer = true
@@ -478,13 +487,19 @@ final class TeleprompterWindow: NSWindow {
   private func setupControlBar() {
     func mkBtn(_ title: String, _ sel: Selector) -> NSButton {
       let b = NSButton(title: title, target: self, action: sel)
-      b.isBordered = false; b.contentTintColor = .white
-      b.font = NSFont.systemFont(ofSize: 13, weight: .bold)
+      b.isBordered = false; b.contentTintColor = NSColor.white.withAlphaComponent(0.92)
+      b.font = NSFont.systemFont(ofSize: 12, weight: .medium)
       b.wantsLayer = true
-      b.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.16).cgColor
-      b.layer?.cornerRadius = 5
+      b.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.08).cgColor
+      b.layer?.cornerRadius = 8       // 小药丸
       return b
     }
+    // 控制条整体: 深色药丸容器(灵动岛模块感)
+    controlBar.wantsLayer = true
+    controlBar.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.32).cgColor
+    controlBar.layer?.cornerRadius = 13
+    controlBar.layer?.borderWidth = 0.5
+    controlBar.layer?.borderColor = NSColor.white.withAlphaComponent(0.14).cgColor
     playPauseButton = mkBtn("⏸", #selector(togglePlay))
     editButton = mkBtn("编辑", #selector(toggleEdit))
     voiceButton = mkBtn("🎤", #selector(toggleVoice))
@@ -494,9 +509,9 @@ final class TeleprompterWindow: NSWindow {
       mkBtn("A-", #selector(fontDown)), mkBtn("A+", #selector(fontUp)), mkBtn("字体", #selector(pickFont)),
       mkBtn("清", #selector(clearScript)), mkBtn("✕", #selector(closePrompter)),
     ])
-    stack.orientation = .horizontal; stack.spacing = 5; stack.distribution = .fillEqually
+    stack.orientation = .horizontal; stack.spacing = 4; stack.distribution = .fillEqually
     controlBar.addSubview(stack)
-    stack.frame = controlBar.bounds
+    stack.frame = controlBar.bounds.insetBy(dx: 5, dy: 3)   // 留内边距, 按钮不贴药丸边
     stack.autoresizingMask = [.width, .height]
     contentView?.addSubview(controlBar)
   }
@@ -560,7 +575,7 @@ final class TeleprompterWindow: NSWindow {
   private func layoutContents() {
     guard let cv = contentView else { return }
     let w = cv.bounds.width, h = cv.bounds.height
-    let barH: CGFloat = 24, barW: CGFloat = 360, journeyH: CGFloat = 30
+    let barH: CGFloat = 28, barW: CGFloat = 366, journeyH: CGFloat = 30
     effectView.frame = cv.bounds
     skyView.frame = cv.bounds
     skyGradient.frame = cv.bounds
@@ -645,13 +660,13 @@ final class TeleprompterWindow: NSWindow {
                      blue: a.blueComponent + (b.blueComponent - a.blueComponent) * k,
                      alpha: a.alphaComponent + (b.alphaComponent - a.alphaComponent) * k)
     }
-    // 科技感深色冷调: 深空蓝 → 青电光 → 深紫极光。深邃克制, 比糖果色高级大气
-    let dayTop = NSColor(srgbRed: 0.05, green: 0.10, blue: 0.20, alpha: 0.82)   // 深空蓝
-    let dayBot = NSColor(srgbRed: 0.04, green: 0.16, blue: 0.26, alpha: 0.66)   // 深青蓝
-    let duskTop = NSColor(srgbRed: 0.03, green: 0.14, blue: 0.26, alpha: 0.84)  // 靛青
-    let duskBot = NSColor(srgbRed: 0.00, green: 0.22, blue: 0.30, alpha: 0.68)  // 青电光
-    let nightTop = NSColor(srgbRed: 0.10, green: 0.06, blue: 0.24, alpha: 0.86) // 深紫
-    let nightBot = NSColor(srgbRed: 0.06, green: 0.12, blue: 0.30, alpha: 0.70) // 蓝紫极光
+    // 灵动岛黑玻璃 + 极克制冷调点缀: 近黑, 随进度微微泛蓝→青→紫, 高级深邃
+    let dayTop = NSColor(srgbRed: 0.04, green: 0.07, blue: 0.13, alpha: 0.55)   // 近黑泛蓝
+    let dayBot = NSColor(srgbRed: 0.03, green: 0.09, blue: 0.15, alpha: 0.40)
+    let duskTop = NSColor(srgbRed: 0.02, green: 0.09, blue: 0.15, alpha: 0.58)  // 近黑泛青
+    let duskBot = NSColor(srgbRed: 0.01, green: 0.12, blue: 0.16, alpha: 0.42)
+    let nightTop = NSColor(srgbRed: 0.07, green: 0.04, blue: 0.15, alpha: 0.60) // 近黑泛紫
+    let nightBot = NSColor(srgbRed: 0.05, green: 0.06, blue: 0.17, alpha: 0.44)
     let top: NSColor, bot: NSColor
     if p < 0.5 { top = mix(dayTop, duskTop, p / 0.5); bot = mix(dayBot, duskBot, p / 0.5) }
     else { top = mix(duskTop, nightTop, (p - 0.5) / 0.5); bot = mix(duskBot, nightBot, (p - 0.5) / 0.5) }

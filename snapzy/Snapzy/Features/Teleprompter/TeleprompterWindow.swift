@@ -28,6 +28,7 @@ private final class LinesView: NSView {
   var fontSize: CGFloat = 30 { didSet { rebuild() } }
   var fontFamily: String? = nil { didSet { rebuild() } }
   var textColor: NSColor = .white { didSet { recolor() } }
+  var highlightColor: NSColor = .systemYellow   // 卡拉OK 已念字颜色
 
   /// 当前滚动位置(像素, 0 = 第一行在焦点)。外部 timer 推进。
   var scrollOffset: CGFloat = 0
@@ -39,11 +40,23 @@ private final class LinesView: NSView {
   private let lineGap: CGFloat = 10          // 行间距
   private let hPad: CGFloat = 24             // 左右留白
   var enableBlur: Bool = true               // 远行轻虚化(bucket 化, 只在档位变化时更新, 省性能)
+  var enableKaraoke: Bool = true            // 卡拉OK 逐字点亮(随滚动进度, 非语音同步)
 
   private var lineLayers: [CATextLayer] = []
   private var lineCenters: [CGFloat] = []    // 每行在"内容坐标"里的中心 y(从内容顶, 向下增)
+  private var lineHeights: [CGFloat] = []    // 每行渲染高度(卡拉OK 推进带宽用)
+  private var lineTexts: [String] = []       // 每行纯文本(卡拉OK 逐字重建用)
+  private var lineCharCounts: [Int] = []     // 每行字数(NSString length)
+  private var lineHi: [Int] = []             // 当前已点亮到第几字(-1 = 纯色, 避免每帧重建)
   private var lineBuckets: [Int] = []        // 每行当前虚化档位(避免每帧重设 filter)
   private var contentHeight: CGFloat = 0
+  private var curFont: NSFont = .systemFont(ofSize: 30, weight: .semibold)
+  private let curPara: NSMutableParagraphStyle = {
+    let p = NSMutableParagraphStyle(); p.alignment = .center; p.lineBreakMode = .byWordWrapping; return p
+  }()
+
+  /// 念稿总进度 0...1(火箭赛道用)。
+  var progress: CGFloat { resetAt > 0 ? max(0, min(1, scrollOffset / resetAt)) : 0 }
 
   override var isFlipped: Bool { true }       // 顶部为原点, y 向下增 → 文字自上而下、向上滚
 
@@ -65,12 +78,10 @@ private final class LinesView: NSView {
   func rebuild() {
     lineLayers.forEach { $0.removeFromSuperlayer() }
     lineLayers.removeAll(); lineCenters.removeAll(); lineBuckets.removeAll()
+    lineHeights.removeAll(); lineTexts.removeAll(); lineCharCounts.removeAll(); lineHi.removeAll()
 
     let wrapWidth = max(40, bounds.width - 2 * hPad)
-    let font = makeFont()
-    let para = NSMutableParagraphStyle()
-    para.alignment = .center
-    para.lineBreakMode = .byWordWrapping
+    curFont = makeFont()
 
     let lines = script.components(separatedBy: "\n")
     var cursor: CGFloat = 0
@@ -82,7 +93,7 @@ private final class LinesView: NSView {
         cursor += emptyGap + lineGap   // 空行 = 段落间隙
         continue
       }
-      let attrs: [NSAttributedString.Key: Any] = [.font: font, .paragraphStyle: para]
+      let attrs: [NSAttributedString.Key: Any] = [.font: curFont, .paragraphStyle: curPara]
       let bounding = (text as NSString).boundingRect(
         with: NSSize(width: wrapWidth, height: .greatestFiniteMagnitude),
         options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: attrs)
@@ -90,7 +101,7 @@ private final class LinesView: NSView {
 
       let tl = CATextLayer()
       tl.string = NSAttributedString(string: text, attributes: [
-        .font: font, .paragraphStyle: para, .foregroundColor: textColor,
+        .font: curFont, .paragraphStyle: curPara, .foregroundColor: textColor,
       ])
       tl.isWrapped = true
       tl.alignmentMode = .center
@@ -103,6 +114,10 @@ private final class LinesView: NSView {
 
       lineLayers.append(tl)
       lineCenters.append(cursor + h / 2)
+      lineHeights.append(h)
+      lineTexts.append(text)
+      lineCharCounts.append((text as NSString).length)
+      lineHi.append(-1)
       lineBuckets.append(-1)
       cursor += h + lineGap
     }
@@ -110,17 +125,28 @@ private final class LinesView: NSView {
     updateDepth()
   }
 
+  /// 把第 i 行渲成"前 n 字高亮色、其余正常色"(卡拉OK)。
+  private func applyKaraoke(_ i: Int, _ n: Int) {
+    let s = lineTexts[i]
+    let full = NSMutableAttributedString(string: s, attributes: [
+      .font: curFont, .paragraphStyle: curPara, .foregroundColor: textColor,
+    ])
+    let len = (s as NSString).length
+    if n > 0 { full.addAttribute(.foregroundColor, value: highlightColor, range: NSRange(location: 0, length: min(n, len))) }
+    lineLayers[i].string = full
+  }
+
+  /// 把第 i 行渲成纯正常色。
+  private func applyPlain(_ i: Int) {
+    lineLayers[i].string = NSAttributedString(string: lineTexts[i], attributes: [
+      .font: curFont, .paragraphStyle: curPara, .foregroundColor: textColor,
+    ])
+  }
+
   /// 只改颜色, 不重建几何。
   private func recolor() {
-    let font = makeFont()
-    let para = NSMutableParagraphStyle(); para.alignment = .center; para.lineBreakMode = .byWordWrapping
-    let lines = script.components(separatedBy: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
     CATransaction.begin(); CATransaction.setDisableActions(true)
-    for (i, tl) in lineLayers.enumerated() where i < lines.count {
-      tl.string = NSAttributedString(string: lines[i], attributes: [
-        .font: font, .paragraphStyle: para, .foregroundColor: textColor,
-      ])
-    }
+    for i in lineLayers.indices { applyPlain(i); lineHi[i] = -1 }
     CATransaction.commit()
   }
 
@@ -157,6 +183,19 @@ private final class LinesView: NSView {
       tl.transform = CATransform3DMakeScale(scale, scale, 1)
       tl.opacity = Float(opacity)
 
+      // 卡拉OK: 行随滚动经过焦点带 → 逐字点亮(非语音, 跟滚动进度同步)
+      if enableKaraoke {
+        let band = max(36, lineHeights[i])
+        let readP = max(0, min(1, (focusY + band / 2 - centerY) / band))
+        let count = lineCharCounts[i]
+        if readP > 0.001 && readP < 0.999 && count > 0 {
+          let n = max(0, min(count, Int((readP * CGFloat(count)).rounded())))
+          if lineHi[i] != n { applyKaraoke(i, n); lineHi[i] = n }
+        } else if lineHi[i] != -1 {
+          applyPlain(i); lineHi[i] = -1
+        }
+      }
+
       if enableBlur {
         let bucket = Int((t * 4).rounded(.down))    // 0...4, 只在档位变化时重设 filter
         if bucket != lineBuckets[i] {
@@ -184,6 +223,11 @@ final class TeleprompterWindow: NSWindow {
   private let editScroll = NSScrollView()          // 编辑态: 粘贴/输入稿子
   private let editText = NSTextView()
   private let controlBar = NSView()
+  private let rocketBar = NSView()                 // 底部火箭进度赛道
+  private let trackLayer = CALayer()
+  private let trackFill = CALayer()
+  private let rocketLayer = CATextLayer()
+  private let flagLayer = CATextLayer()
   private var playPauseButton: NSButton!
   private var editButton: NSButton!
   private var timer: Timer?
@@ -248,8 +292,44 @@ final class TeleprompterWindow: NSWindow {
     contentView?.addSubview(editScroll)
 
     setupControlBar()
+    setupRocketTrack()
     layoutContents()
     startScrolling()
+  }
+
+  // MARK: - 底部火箭进度赛道
+
+  private func setupRocketTrack() {
+    rocketBar.wantsLayer = true
+    trackLayer.backgroundColor = NSColor.white.withAlphaComponent(0.16).cgColor
+    trackLayer.cornerRadius = 2
+    trackFill.backgroundColor = NSColor.systemTeal.withAlphaComponent(0.6).cgColor
+    trackFill.cornerRadius = 2
+    let scale = screenScale
+    for (l, s, sz) in [(rocketLayer, "🚀", 17.0), (flagLayer, "🏁", 15.0)] {
+      l.string = s
+      l.fontSize = sz
+      l.alignmentMode = .center
+      l.contentsScale = scale
+      l.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+      l.bounds = CGRect(x: 0, y: 0, width: 24, height: 24)
+    }
+    rocketBar.layer?.addSublayer(trackLayer)
+    rocketBar.layer?.addSublayer(trackFill)
+    rocketBar.layer?.addSublayer(flagLayer)
+    rocketBar.layer?.addSublayer(rocketLayer)
+    contentView?.addSubview(rocketBar)
+  }
+
+  private var screenScale: CGFloat { screen?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2 }
+
+  private func updateRocket() {
+    let p = linesView.progress
+    let t = trackLayer.frame
+    CATransaction.begin(); CATransaction.setDisableActions(true)
+    trackFill.frame = CGRect(x: t.minX, y: t.minY, width: max(0.1, t.width * p), height: t.height)
+    rocketLayer.position = CGPoint(x: t.minX + t.width * p, y: t.midY)
+    CATransaction.commit()
   }
 
   // MARK: - 右上角控制条
@@ -289,9 +369,19 @@ final class TeleprompterWindow: NSWindow {
     guard let cv = contentView else { return }
     let w = cv.bounds.width, h = cv.bounds.height
     let barH: CGFloat = 24, barW: CGFloat = 238
+    let rocketH: CGFloat = 24
     effectView.frame = cv.bounds
     controlBar.frame = NSRect(x: w - barW - 6, y: h - barH - 6, width: barW, height: barH)
-    let contentRect = NSRect(x: 0, y: 0, width: w, height: h - barH - 10)
+
+    // 底部赛道
+    rocketBar.frame = NSRect(x: 0, y: 2, width: w, height: rocketH)
+    let pad: CGFloat = 18, flagW: CGFloat = 20, trackY: CGFloat = 10, trackH: CGFloat = 4
+    let left = pad, right = w - pad - flagW
+    trackLayer.frame = CGRect(x: left, y: trackY, width: max(1, right - left), height: trackH)
+    flagLayer.position = CGPoint(x: right + flagW / 2, y: trackY + trackH / 2)
+    updateRocket()
+
+    let contentRect = NSRect(x: 0, y: rocketH + 4, width: w, height: h - barH - rocketH - 14)
     linesView.frame = contentRect
     editScroll.frame = contentRect.insetBy(dx: 16, dy: 12)
   }
@@ -320,6 +410,7 @@ final class TeleprompterWindow: NSWindow {
     linesView.scrollOffset += speed
     if linesView.scrollOffset > linesView.resetAt { linesView.scrollOffset = 0 }
     linesView.updateDepth()
+    updateRocket()
   }
 
   // MARK: - 控制条 actions
@@ -367,6 +458,19 @@ final class TeleprompterWindow: NSWindow {
   }
 
   override var canBecomeKey: Bool { true }
+
+  /// ⌘V 直接粘贴: 显示态下复制好稿子按 ⌘V 即变成滚动稿(免点 ✎); 编辑态走正常粘贴。
+  override func keyDown(with event: NSEvent) {
+    let cmdV = event.modifierFlags.contains(.command) && event.charactersIgnoringModifiers?.lowercased() == "v"
+    if cmdV, !editing {
+      if let s = NSPasteboard.general.string(forType: .string), !s.isEmpty {
+        linesView.script = s
+        linesView.scrollOffset = 0
+        return
+      }
+    }
+    super.keyDown(with: event)
+  }
 
   // MARK: - 右键菜单
 

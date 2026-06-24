@@ -15,11 +15,11 @@ import simd
 /// nonisolated + Sendable so the camera's background queue can call it.
 nonisolated final class MetalBeautyRenderer: @unchecked Sendable {
   var smoothing: Float = 0.7   // 磨皮
-  var whitening: Float = 0.35  // 美白
-  var thinFace: Float = 0.5    // 整脸瘦脸
-  var chinFace: Float = 0.0    // 瘦下巴(脸框近似效果差,待Vision精确关键点认真做,暂关)
-  var autoFrame: Bool = true   // 自动构图
-  var filter: BeautyFilterType = .cream
+  var whitening: Float = 0.1   // 美白(轻,避免偏色)
+  var thinFace: Float = 0.0    // 瘦脸暂关(之前做坏=下巴变方,待专业重做)
+  var chinFace: Float = 0.0    // 瘦下巴暂关
+  var autoFrame: Bool = false  // 自动构图暂关(=脸被P一半的根源,先直接显示完整画面)
+  var filter: BeautyFilterType = .original // 默认正常颜色(程序滤镜阴间,先止损,待专业.cube)
 
   private let device: MTLDevice
   private let queue: MTLCommandQueue
@@ -33,6 +33,8 @@ nonisolated final class MetalBeautyRenderer: @unchecked Sendable {
   private var smCenterY: CGFloat = 0.5
   private var smRoll: CGFloat = 0
   private var smSize: CGFloat = 0.4
+  private var smChinX: CGFloat = 0.5
+  private var smChinY: CGFloat = 0.0
   private var hasFace = false
 
   init() {
@@ -62,6 +64,8 @@ nonisolated final class MetalBeautyRenderer: @unchecked Sendable {
       smCenterY += (face.centerY - smCenterY) * a
       smRoll += (face.roll - smRoll) * a
       smSize += (face.size - smSize) * a
+      smChinX += (face.chinX - smChinX) * a
+      smChinY += (face.chinY - smChinY) * a
       hasFace = true
     }
 
@@ -93,6 +97,8 @@ nonisolated final class MetalBeautyRenderer: @unchecked Sendable {
     enc.setBytes(&face4, length: MemoryLayout<SIMD4<Float>>.size, index: 2)
     var chin = hasFace ? chinFace : 0
     enc.setBytes(&chin, length: MemoryLayout<Float>.size, index: 3)
+    var chinPos = SIMD2<Float>(Float(smChinX), Float(1.0 - smChinY)) // 精确下巴尖(转左上原点)
+    enc.setBytes(&chinPos, length: MemoryLayout<SIMD2<Float>>.size, index: 4)
     let tg = MTLSize(width: 16, height: 16, depth: 1)
     let groups = MTLSize(width: (width + 15) / 16, height: (height + 15) / 16, depth: 1)
     enc.dispatchThreadgroups(groups, threadsPerThreadgroup: tg)

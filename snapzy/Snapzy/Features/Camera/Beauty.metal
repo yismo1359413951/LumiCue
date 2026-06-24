@@ -17,6 +17,7 @@ kernel void beautyKernel(
     constant float &whitening               [[buffer(1)]],
     constant float4 &face                   [[buffer(2)]],
     constant float &chin                    [[buffer(3)]],
+    constant float2 &chinPos                 [[buffer(4)]],
     uint2 gid                               [[thread_position_in_grid]])
 {
     const uint W = inTex.get_width();
@@ -43,16 +44,14 @@ kernel void beautyKernel(
         readUV.x += sign(dx) * amount * fw;
     }
 
-    // 下巴瘦脸: 下巴区域向上收缩(下巴变短变尖)
+    // 下巴瘦脸: 用精确下巴尖关键点, 下巴区域向上收缩(下巴变短变尖)
     if (chin > 0.01 && face.z > 0.01) {
-        float2 fc = float2(face.x, face.y);
         float fw = face.z;
-        float dx = uv.x - fc.x;
-        float chinY = fc.y + fw * 0.5;       // 下巴大概位置(脸中心下方)
-        float dyc = uv.y - chinY;
-        float chinMask = smoothstep(0.55, 0.0, length(float2(dx / (fw * 0.5), dyc / (fw * 0.45))));
-        readUV.y += chin * chinMask * fw * 0.18;            // 向上收缩(内容上移=下巴变短)
-        readUV.x += sign(dx) * chin * chinMask * fw * 0.05; // 轻微收窄
+        float dx = uv.x - chinPos.x;          // 精确下巴尖 x
+        float dyc = uv.y - chinPos.y;         // 精确下巴尖 y
+        float chinMask = smoothstep(0.5, 0.0, length(float2(dx / (fw * 0.45), dyc / (fw * 0.4))));
+        readUV.x += sign(dx) * chin * chinMask * fw * 0.15; // 左右向中收窄(下巴变尖, 不是上下)
+        readUV.y += chin * chinMask * fw * 0.03;            // 轻微上提
     }
 
     uint2 base = uint2(clamp(readUV.x * float(W), 0.0, float(W - 1)),

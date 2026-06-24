@@ -91,6 +91,15 @@ kernel void beautyKernel(
         center = mix(center, float3(gray), whitening * 0.06);
     }
 
+    // 面部补光(打光感): 脸中心径向柔光提亮, 中心亮、边缘自然渐隐 => 立体不死平
+    // 用高光 lift(往白推)而非整体加值, 保留五官立体感, 不发灰
+    if (face.z > 0.01) {
+        float2 fc = float2(face.x, face.y);
+        float fd = length((uv - fc) / (face.z * 1.5));
+        float lite = exp(-fd * fd * 0.5) * 0.55;       // 高斯柔光: 中心最强
+        center += lite * (1.0 - center) * 0.55;        // 高光 lift, 保立体
+    }
+
     center = clamp(center, 0.0, 1.0);
     outTex.write(float4(center, 1.0), gid);
 }

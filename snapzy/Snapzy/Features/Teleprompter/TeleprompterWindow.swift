@@ -137,6 +137,30 @@ private final class LinesView: NSView {
     return (last - first) + bounds.height * 0.55
   }
 
+  /// 卡壳救急: 把焦点跳到相邻一句(dir=-1 上一句重念 / +1 下一句)。
+  func stepLine(_ dir: Int) {
+    guard !lineCenters.isEmpty, let first = lineCenters.first else { return }
+    let focusContentY = first + scrollOffset
+    var idx = 0; var best = CGFloat.greatestFiniteMagnitude
+    for (i, c) in lineCenters.enumerated() {
+      let d = abs(c - focusContentY); if d < best { best = d; idx = i }
+    }
+    let target = max(0, min(lineCenters.count - 1, idx + dir))
+    scrollOffset = lineCenters[target] - first
+  }
+
+  /// 重念这句: 把当前焦点行挪到刚进焦点的位置, 从这句开头重念。
+  func restartCurrentLine() {
+    guard !lineCenters.isEmpty, let first = lineCenters.first else { return }
+    let focusContentY = first + scrollOffset
+    var idx = 0; var best = CGFloat.greatestFiniteMagnitude
+    for (i, c) in lineCenters.enumerated() {
+      let d = abs(c - focusContentY); if d < best { best = d; idx = i }
+    }
+    let band = max(36, lineHeights[idx])
+    scrollOffset = lineCenters[idx] - first - band / 2
+  }
+
   override func layout() { super.layout(); rebuild() }
 
   func updateDepth() {
@@ -217,8 +241,12 @@ final class TeleprompterWindow: NSWindow {
 
   private var playPauseButton: NSButton!
   private var editButton: NSButton!
+  private var rescuePanel: NSView!          // 卡壳救场面板(暂停时出现)
+  private var rescueStack: NSStackView!
+  private var retreatButton: NSButton!
+  private var retreatCount = 0
   private var timer: Timer?
-  private var speed: CGFloat = 0.6
+  private var speed: CGFloat = 0.4
   private var playing = true
   private var editing = false
 
@@ -226,6 +254,8 @@ final class TeleprompterWindow: NSWindow {
   private var combo = 0
   private var frameTick = 0
   private var finished = false
+  private let spritePool = ["🐱", "🐰", "🐶", "🐥", "🦊", "🐼", "🐨", "🐯", "🦄", "🐧"]
+  private func currentCat() -> String { spritePool[combo % spritePool.count] }   // 念完一句随机换形象
 
   private let placeholder = """
   把逐字稿粘贴进来 — 点上面 ✎ 编辑，或直接 ⌘V
@@ -295,6 +325,7 @@ final class TeleprompterWindow: NSWindow {
 
     setupControlBar()
     setupJourney()
+    setupRescue()
     layoutContents()
     startScrolling()
   }
@@ -312,9 +343,9 @@ final class TeleprompterWindow: NSWindow {
       return b
     }
     playPauseButton = mkBtn("⏸", #selector(togglePlay))
-    editButton = mkBtn("✎", #selector(toggleEdit))
+    editButton = mkBtn("编辑", #selector(toggleEdit))
     let stack = NSStackView(views: [
-      playPauseButton, editButton,
+      mkBtn("⏪", #selector(stepBack)), playPauseButton, editButton,
       mkBtn("小", #selector(sizeSmall)), mkBtn("中", #selector(sizeMedium)), mkBtn("大", #selector(sizeLarge)),
       mkBtn("清", #selector(clearScript)), mkBtn("✕", #selector(closePrompter)),
     ])
@@ -351,12 +382,40 @@ final class TeleprompterWindow: NSWindow {
     contentView?.addSubview(journeyBar)
   }
 
+  // MARK: - 卡壳救场面板(暂停时出现)
+
+  private func setupRescue() {
+    rescuePanel = NSView()
+    rescuePanel.wantsLayer = true
+    rescuePanel.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.30).cgColor
+    rescuePanel.layer?.cornerRadius = 10
+    rescuePanel.isHidden = true
+    func mk(_ t: String, _ s: Selector) -> NSButton {
+      let b = NSButton(title: t, target: self, action: s)
+      b.isBordered = false; b.contentTintColor = .white
+      b.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
+      b.wantsLayer = true
+      b.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.18).cgColor
+      b.layer?.cornerRadius = 7
+      return b
+    }
+    retreatButton = mk("← 退1句", #selector(rescueRetreat))
+    rescueStack = NSStackView(views: [
+      mk("↺ 重念这句", #selector(rescueRestart)),
+      retreatButton,
+      mk("▶ 继续", #selector(rescueResume)),
+    ])
+    rescueStack.orientation = .horizontal; rescueStack.spacing = 8; rescueStack.distribution = .fillEqually
+    rescuePanel.addSubview(rescueStack)
+    contentView?.addSubview(rescuePanel)
+  }
+
   private var screenScale: CGFloat { screen?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2 }
 
   private func layoutContents() {
     guard let cv = contentView else { return }
     let w = cv.bounds.width, h = cv.bounds.height
-    let barH: CGFloat = 24, barW: CGFloat = 238, journeyH: CGFloat = 30
+    let barH: CGFloat = 24, barW: CGFloat = 292, journeyH: CGFloat = 30
     effectView.frame = cv.bounds
     skyView.frame = cv.bounds
     skyGradient.frame = cv.bounds
@@ -364,7 +423,7 @@ final class TeleprompterWindow: NSWindow {
     controlBar.frame = NSRect(x: w - barW - 6, y: h - barH - 6, width: barW, height: barH)
 
     journeyBar.frame = NSRect(x: 0, y: 2, width: w, height: journeyH)
-    let comboW: CGFloat = 64, flagW: CGFloat = 22, trackY: CGFloat = 13, trackH: CGFloat = 4
+    let comboW: CGFloat = 78, flagW: CGFloat = 22, trackY: CGFloat = 13, trackH: CGFloat = 4
     let left = 12 + comboW, right = w - 14 - flagW
     comboLayer.position = CGPoint(x: 12, y: trackY + trackH / 2)
     trackLayer.frame = CGRect(x: left, y: trackY, width: max(1, right - left), height: trackH)
@@ -373,6 +432,10 @@ final class TeleprompterWindow: NSWindow {
     let contentRect = NSRect(x: 0, y: journeyH + 4, width: w, height: h - barH - journeyH - 14)
     linesView.frame = contentRect
     editScroll.frame = contentRect.insetBy(dx: 16, dy: 12)
+
+    let rpW = min(w - 40, 380), rpH: CGFloat = 40
+    rescuePanel.frame = NSRect(x: (w - rpW) / 2, y: journeyH + 12, width: rpW, height: rpH)
+    rescueStack.frame = rescuePanel.bounds.insetBy(dx: 8, dy: 6)
     updateJourney()
   }
 
@@ -434,12 +497,13 @@ final class TeleprompterWindow: NSWindow {
                      blue: a.blueComponent + (b.blueComponent - a.blueComponent) * k,
                      alpha: a.alphaComponent + (b.alphaComponent - a.alphaComponent) * k)
     }
-    let dayTop = NSColor(srgbRed: 0.40, green: 0.66, blue: 1.0, alpha: 0.32)
-    let dayBot = NSColor(srgbRed: 0.60, green: 0.82, blue: 1.0, alpha: 0.10)
-    let duskTop = NSColor(srgbRed: 1.0, green: 0.52, blue: 0.36, alpha: 0.34)
-    let duskBot = NSColor(srgbRed: 0.55, green: 0.35, blue: 0.62, alpha: 0.16)
-    let nightTop = NSColor(srgbRed: 0.07, green: 0.10, blue: 0.32, alpha: 0.42)
-    let nightBot = NSColor(srgbRed: 0.18, green: 0.14, blue: 0.40, alpha: 0.24)
+    // 马卡龙色系: 薄荷→蜜桃→薰衣草。天色在文字下层, 提高 alpha+明度盖住深玻璃 → 鲜亮不发灰
+    let dayTop = NSColor(srgbRed: 0.66, green: 0.97, blue: 0.85, alpha: 0.72)   // 薄荷绿
+    let dayBot = NSColor(srgbRed: 0.74, green: 0.93, blue: 1.0, alpha: 0.55)    // 浅天蓝
+    let duskTop = NSColor(srgbRed: 1.0, green: 0.74, blue: 0.80, alpha: 0.74)   // 蜜桃粉
+    let duskBot = NSColor(srgbRed: 1.0, green: 0.88, blue: 0.66, alpha: 0.58)   // 鹅黄
+    let nightTop = NSColor(srgbRed: 0.74, green: 0.68, blue: 1.0, alpha: 0.76)  // 薰衣草紫
+    let nightBot = NSColor(srgbRed: 0.86, green: 0.78, blue: 1.0, alpha: 0.60)  // 丁香
     let top: NSColor, bot: NSColor
     if p < 0.5 { top = mix(dayTop, duskTop, p / 0.5); bot = mix(dayBot, duskBot, p / 0.5) }
     else { top = mix(duskTop, nightTop, (p - 0.5) / 0.5); bot = mix(duskBot, nightBot, (p - 0.5) / 0.5) }
@@ -454,14 +518,15 @@ final class TeleprompterWindow: NSWindow {
     combo += 1
     refreshCombo(pulse: true)
     spark(at: focusPoint())
+    if !finished { spriteLayer.string = currentCat() }   // 每念完一句换一只
     hopSprite()
     if combo % 5 == 0 { hearts(at: spritePointInFX()) }
   }
 
   private func refreshCombo(pulse: Bool) {
-    let s = NSMutableAttributedString(string: combo >= 2 ? "🔥 \(combo) COMBO" : "",
+    let s = NSMutableAttributedString(string: combo >= 2 ? "🔥 连念 \(combo) 句" : "",
       attributes: [.font: NSFont.systemFont(ofSize: 13, weight: .heavy),
-                   .foregroundColor: NSColor.systemYellow])
+                   .foregroundColor: NSColor.systemOrange])
     comboLayer.string = s
     guard pulse, combo >= 2 else { return }
     let a = CABasicAnimation(keyPath: "transform.scale")
@@ -569,7 +634,9 @@ final class TeleprompterWindow: NSWindow {
   @objc private func togglePlay() {
     playing.toggle()
     playPauseButton.title = playing ? "⏸" : "▶"
-    if !finished { spriteLayer.string = playing ? "🐱" : "😴" }   // 暂停打盹
+    if !finished { spriteLayer.string = playing ? currentCat() : "😴" }   // 暂停打盹
+    rescuePanel.isHidden = playing || editing                            // 暂停=出救场面板
+    if !playing { retreatCount = 0; retreatButton.title = "← 退1句" }
   }
 
   @objc private func toggleEdit() {
@@ -577,14 +644,15 @@ final class TeleprompterWindow: NSWindow {
     if editing {
       editText.string = linesView.script
       editScroll.isHidden = false; linesView.isHidden = true; fxView.isHidden = true
+      rescuePanel.isHidden = true
       makeKeyAndOrderFront(nil); makeFirstResponder(editText)
     } else {
       linesView.script = editText.string
       linesView.scrollOffset = 0; combo = 0; finished = false; refreshCombo(pulse: false)
-      spriteLayer.string = playing ? "🐱" : "😴"
+      spriteLayer.string = playing ? currentCat() : "😴"
       editScroll.isHidden = true; linesView.isHidden = false; fxView.isHidden = false
     }
-    editButton.title = editing ? "✓" : "✎"
+    editButton.title = editing ? "完成" : "编辑"
   }
 
   @objc private func sizeSmall() { resize(to: 520) }
@@ -603,13 +671,21 @@ final class TeleprompterWindow: NSWindow {
 
   override var canBecomeKey: Bool { true }
 
-  /// ⌘V 直接粘稿(显示态), 编辑态走正常粘贴。
+  /// 快捷键: ⌘V 直接粘稿 · 空格 暂停/播放 · ↑回退一句(卡壳) · ↓前进一句。编辑态不拦。
   override func keyDown(with event: NSEvent) {
     let cmdV = event.modifierFlags.contains(.command) && event.charactersIgnoringModifiers?.lowercased() == "v"
     if cmdV, !editing, let s = NSPasteboard.general.string(forType: .string), !s.isEmpty {
       linesView.script = s
       linesView.scrollOffset = 0; combo = 0; finished = false; refreshCombo(pulse: false)
       return
+    }
+    if !editing {
+      switch event.keyCode {
+      case 49: togglePlay(); return                                            // 空格 暂停/播放
+      case 126: linesView.stepLine(-1); linesView.updateDepth(); updateJourney(); return   // ↑ 回退一句
+      case 125: linesView.stepLine(1); linesView.updateDepth(); updateJourney(); return    // ↓ 前进一句
+      default: break
+      }
     }
     super.keyDown(with: event)
   }
@@ -625,7 +701,8 @@ final class TeleprompterWindow: NSWindow {
     menu.addItem(.separator())
 
     let speedSub = NSMenu()
-    for (t, v) in [("0.5 慢", 0.5), ("0.6", 0.6), ("0.75", 0.75), ("0.9 快", 0.9)] {
+    for (t, v) in [("0.1 最慢", 0.1), ("0.2", 0.2), ("0.3", 0.3), ("0.4", 0.4), ("0.5", 0.5),
+                   ("0.6", 0.6), ("0.7", 0.7), ("1.2 ⏩ 加速", 1.2), ("2.0 ⏩⏩ 快进", 2.0)] {
       let i = NSMenuItem(title: t, action: #selector(setSpeed(_:)), keyEquivalent: "")
       i.target = self; i.representedObject = v
       i.state = (abs(speed - CGFloat(v)) < 0.01) ? .on : .off
@@ -671,7 +748,27 @@ final class TeleprompterWindow: NSWindow {
     }
   }
 
-  @objc private func clearScript() { if editing { editText.string = "" } else { linesView.script = "" } }
+  /// 清空: 显示态下清空后直接进编辑态(光标就绪), 你直接 ⌘V 粘新稿。
+  @objc private func clearScript() {
+    if editing { editText.string = "" }
+    else { linesView.script = ""; toggleEdit() }
+  }
+
+  /// ⏪ 卡壳救急: 回退到上一句重念。
+  @objc private func stepBack() {
+    linesView.stepLine(-1)
+    linesView.updateDepth()
+    updateJourney()
+  }
+
+  // 卡壳救场面板按钮
+  @objc private func rescueRestart() { linesView.restartCurrentLine(); linesView.updateDepth(); updateJourney() }
+  @objc private func rescueRetreat() {
+    retreatCount += 1
+    linesView.stepLine(-1); linesView.updateDepth(); updateJourney()
+    retreatButton.title = "← 退\(retreatCount)句"
+  }
+  @objc private func rescueResume() { if !playing { togglePlay() } }
   @objc private func setSpeed(_ s: NSMenuItem) { if let v = s.representedObject as? Double { speed = CGFloat(v) } }
   @objc private func setFontSize(_ s: NSMenuItem) { if let v = s.representedObject as? Double { linesView.fontSize = CGFloat(v) } }
   @objc private func setTextColor(_ s: NSMenuItem) {

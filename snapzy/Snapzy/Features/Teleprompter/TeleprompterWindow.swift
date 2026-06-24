@@ -8,6 +8,7 @@
 //
 
 import AppKit
+import UniformTypeIdentifiers
 
 @MainActor
 final class TeleprompterWindow: NSWindow {
@@ -163,24 +164,60 @@ final class TeleprompterWindow: NSWindow {
 
   override var canBecomeKey: Bool { true }
 
-  // 右键补充: 速度/字号
+  // 右键: 导入稿 + 速度(多档) + 字号(Word式数值列表)
   override func rightMouseUp(with event: NSEvent) {
     let menu = NSMenu()
+
+    // 导入 .txt 逐字稿
+    let importItem = NSMenuItem(title: "Import .txt 导入逐字稿", action: #selector(importScript), keyEquivalent: "")
+    importItem.target = self
+    menu.addItem(importItem)
+    let clearItem = NSMenuItem(title: "Clear 清空", action: #selector(clearScript), keyEquivalent: "")
+    clearItem.target = self
+    menu.addItem(clearItem)
+    menu.addItem(.separator())
+
+    // 速度 Speed (多档细调, 勾选当前)
     let speedSub = NSMenu()
-    for (t, v) in [("Fast 快", 1.3), ("Medium 中", 0.6), ("Slow 慢", 0.3)] {
+    for (t, v) in [("0.3 慢", 0.3), ("0.6", 0.6), ("1.0", 1.0), ("1.5", 1.5), ("2.0 快", 2.0)] {
       let i = NSMenuItem(title: t, action: #selector(setSpeed(_:)), keyEquivalent: "")
-      i.target = self; i.representedObject = v; speedSub.addItem(i)
+      i.target = self; i.representedObject = v
+      i.state = (abs(speed - CGFloat(v)) < 0.01) ? .on : .off
+      speedSub.addItem(i)
     }
     let si = NSMenuItem(title: "Speed 速度", action: nil, keyEquivalent: "")
     menu.addItem(si); menu.setSubmenu(speedSub, for: si)
+
+    // 字号 Font (Word 式数值列表, 勾选当前)
     let fontSub = NSMenu()
-    for (t, v) in [("Large 大", 40.0), ("Medium 中", 30.0), ("Small 小", 22.0)] {
-      let i = NSMenuItem(title: t, action: #selector(setFontSize(_:)), keyEquivalent: "")
-      i.target = self; i.representedObject = v; fontSub.addItem(i)
+    let cur = textView.font?.pointSize ?? 30
+    for v in [10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 24.0, 28.0, 32.0, 40.0, 48.0, 56.0] {
+      let i = NSMenuItem(title: "\(Int(v)) pt", action: #selector(setFontSize(_:)), keyEquivalent: "")
+      i.target = self; i.representedObject = v
+      i.state = (abs(cur - CGFloat(v)) < 0.5) ? .on : .off
+      fontSub.addItem(i)
     }
     let fi = NSMenuItem(title: "Font 字号", action: nil, keyEquivalent: "")
     menu.addItem(fi); menu.setSubmenu(fontSub, for: fi)
+
     if let v = contentView { NSMenu.popUpContextMenu(menu, with: event, for: v) }
+  }
+
+  @objc private func importScript() {
+    let panel = NSOpenPanel()
+    panel.allowsMultipleSelection = false
+    panel.canChooseDirectories = false
+    panel.allowedContentTypes = [.plainText, .text]
+    panel.message = "选一个 .txt 逐字稿文件"
+    if panel.runModal() == .OK, let url = panel.url,
+       let text = try? String(contentsOf: url, encoding: .utf8) {
+      textView.string = text
+      layoutContents()
+    }
+  }
+
+  @objc private func clearScript() {
+    textView.string = ""
   }
 
   @objc private func setSpeed(_ s: NSMenuItem) {

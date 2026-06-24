@@ -19,7 +19,7 @@ nonisolated final class MetalBeautyRenderer: @unchecked Sendable {
   var thinFace: Float = 0.5    // 整脸瘦脸
   var chinFace: Float = 0.0    // 瘦下巴(脸框近似效果差,待Vision精确关键点认真做,暂关)
   var autoFrame: Bool = true   // 自动构图
-  var filter: BeautyFilterType = .japanese
+  var filter: BeautyFilterType = .cream
 
   private let device: MTLDevice
   private let queue: MTLCommandQueue

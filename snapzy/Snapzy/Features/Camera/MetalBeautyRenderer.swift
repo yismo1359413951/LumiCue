@@ -14,7 +14,7 @@ import simd
 
 /// nonisolated + Sendable so the camera's background queue can call it.
 nonisolated final class MetalBeautyRenderer: @unchecked Sendable {
-  var smoothing: Float = 0.35  // 磨皮(降低, 去"罩一层"塑料糊感, 保自然)
+  var smoothing: Float = 0.15  // 磨皮(很轻, 保留皮肤质感纹理, 不糊不塑料)
   var whitening: Float = 0.1   // 美白(轻,避免偏色)
   var thinFace: Float = 0.0    // 瘦脸暂关(之前做坏=下巴变方,待专业重做)
   var chinFace: Float = 0.0    // 瘦下巴暂关

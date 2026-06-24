@@ -143,6 +143,25 @@ final class CameraBubbleWindow: NSWindow {
     menu.addItem(shapeItem)
     menu.setSubmenu(shapeSub, for: shapeItem)
 
+    // 尺寸/比例 Size (含长方形, 选方块/圆角形状时即长方形 bubble)
+    let sizeSub = NSMenu()
+    let sizes: [(String, CGFloat, CGFloat)] = [
+      ("Small ■ 小方", 150, 150),
+      ("Large ■ 大方", 240, 240),
+      ("Portrait ▮ 竖长方", 190, 250),
+      ("Landscape ▬ 横长方", 260, 180),
+      ("Tall ▯ 竖屏长", 170, 290),
+    ]
+    for (title, sw, sh) in sizes {
+      let item = NSMenuItem(title: title, action: #selector(pickSize(_:)), keyEquivalent: "")
+      item.target = self
+      item.representedObject = [sw, sh]
+      sizeSub.addItem(item)
+    }
+    let sizeItem = NSMenuItem(title: "Size 尺寸/比例", action: nil, keyEquivalent: "")
+    menu.addItem(sizeItem)
+    menu.setSubmenu(sizeSub, for: sizeItem)
+
     // 滤镜 Filter
     let filterSub = NSMenu()
     for f in BeautyFilterType.allCases {
@@ -180,6 +199,22 @@ final class CameraBubbleWindow: NSWindow {
     guard let s = sender.representedObject as? BubbleShape else { return }
     shape = s
     applyShape(rect: contentView?.bounds ?? NSRect(origin: .zero, size: frame.size))
+  }
+
+  @objc private func pickSize(_ sender: NSMenuItem) {
+    guard let v = sender.representedObject as? [CGFloat], v.count == 2 else { return }
+    setBubbleSize(width: v[0], height: v[1])
+  }
+
+  /// 改 bubble 尺寸/比例(保持中心), 重新布局画面层 + 形状遮罩。
+  private func setBubbleSize(width: CGFloat, height: CGFloat) {
+    let cx = frame.midX, cy = frame.midY
+    setFrame(NSRect(x: cx - width / 2, y: cy - height / 2, width: width, height: height), display: true)
+    let rect = NSRect(origin: .zero, size: NSSize(width: width, height: height))
+    contentView?.frame = rect
+    previewHost.frame = rect
+    displayLayer.frame = rect
+    applyShape(rect: rect)
   }
 
   @objc private func pickFilter(_ sender: NSMenuItem) {

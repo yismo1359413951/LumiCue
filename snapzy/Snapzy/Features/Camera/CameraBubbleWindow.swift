@@ -7,6 +7,7 @@
 //
 
 import AppKit
+import AVFoundation
 
 /// A shaped, draggable webcam bubble showing beauty-processed frames.
 /// 可换形状、可拖动、显示美颜后画面的露脸浮窗。
@@ -162,6 +163,24 @@ final class CameraBubbleWindow: NSWindow {
     menu.addItem(sizeItem)
     menu.setSubmenu(sizeSub, for: sizeItem)
 
+    // 摄像头 Camera (含 iPhone 连续互通相机, 治 Mac 前置糊)
+    let camSub = NSMenu()
+    let cams = capture.availableCameras()
+    if cams.isEmpty {
+      camSub.addItem(NSMenuItem(title: "(无可用摄像头)", action: nil, keyEquivalent: ""))
+    } else {
+      for cam in cams {
+        let item = NSMenuItem(title: cam.localizedName, action: #selector(pickCamera(_:)), keyEquivalent: "")
+        item.target = self
+        item.representedObject = cam.uniqueID
+        item.state = (cam.uniqueID == capture.currentDeviceID) ? .on : .off
+        camSub.addItem(item)
+      }
+    }
+    let camItem = NSMenuItem(title: "Camera 摄像头", action: nil, keyEquivalent: "")
+    menu.addItem(camItem)
+    menu.setSubmenu(camSub, for: camItem)
+
     // 滤镜 Filter
     let filterSub = NSMenu()
     for f in BeautyFilterType.allCases {
@@ -204,6 +223,12 @@ final class CameraBubbleWindow: NSWindow {
   @objc private func pickSize(_ sender: NSMenuItem) {
     guard let v = sender.representedObject as? [CGFloat], v.count == 2 else { return }
     setBubbleSize(width: v[0], height: v[1])
+  }
+
+  @objc private func pickCamera(_ sender: NSMenuItem) {
+    guard let id = sender.representedObject as? String,
+          let cam = capture.availableCameras().first(where: { $0.uniqueID == id }) else { return }
+    capture.switchCamera(to: cam)
   }
 
   /// 改 bubble 尺寸/比例(保持中心), 重新布局画面层 + 形状遮罩。

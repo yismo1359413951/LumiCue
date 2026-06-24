@@ -129,7 +129,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // 靓相 Shotlit: 显示隐形提词器 (先可见验 UI, 确认后设 hiddenFromCapture)
     let prompter = TeleprompterWindow()
-    prompter.hiddenFromCapture = true // 隐形(已验证: ScreenCaptureKit录屏/直播截不到, 主播本地可见)
+    prompter.hiddenFromCapture = true // 隐形(控制条/布局已验, 最终录屏/直播隐形)
     prompter.show()
     teleprompter = prompter
   }

@@ -297,10 +297,33 @@ private final class FXView: NSView {
   override func hitTest(_ point: NSPoint) -> NSView? { nil }   // 事件穿透 → 不挡拖动/点击
 }
 
+// MARK: - 右下角拖拽手柄(自由改提词器大小)
+
+@MainActor
+private final class ResizeHandleView: NSView {
+  override init(frame frameRect: NSRect) { super.init(frame: frameRect); wantsLayer = true }
+  required init?(coder: NSCoder) { fatalError() }
+  override func resetCursorRects() { addCursorRect(bounds, cursor: .crosshair) }
+  override func mouseDown(with e: NSEvent) { (window as? TeleprompterWindow)?.beginHandleResize() }
+  override func mouseDragged(with e: NSEvent) { (window as? TeleprompterWindow)?.updateHandleResize() }
+  override func draw(_ dirtyRect: NSRect) {
+    NSColor.white.withAlphaComponent(0.55).setStroke()
+    let p = NSBezierPath(); p.lineWidth = 1.5
+    let w = bounds.width, h = bounds.height
+    for off in [CGFloat(0), 5, 10] {   // 三道斜纹 = 抓手感
+      p.move(to: CGPoint(x: w - 2 - off, y: 2)); p.line(to: CGPoint(x: w - 2, y: 2 + off))
+    }
+    p.stroke()
+  }
+}
+
 // MARK: - 提词器窗口
 
 @MainActor
 final class TeleprompterWindow: NSWindow {
+  private let resizeHandle = ResizeHandleView()    // 右下角拖拽改大小
+  private var resizeStartFrame = NSRect.zero
+  private var resizeStartMouse = NSPoint.zero
   private let effectView = NSVisualEffectView()
   private let skyView = NSView()                    // 天色(随进度 白天→黄昏→星空)
   private let skyGradient = CAGradientLayer()
@@ -330,6 +353,7 @@ final class TeleprompterWindow: NSWindow {
   private var retreatCount = 0
   private var timer: Timer?
   private var speed: CGFloat = 0.4
+  private var fontScale: CGFloat = 1.0   // 字号手动倍数(叠加在随框自适应上)
   private var playing = true
   private var editing = false
 
@@ -337,7 +361,7 @@ final class TeleprompterWindow: NSWindow {
   private var combo = 0
   private var frameTick = 0
   private var finished = false
-  private let spritePool = ["🐱", "🐰", "🐶", "🐥", "🦊", "🐼", "🐨", "🐯", "🦄", "🐧"]
+  private let spritePool = ["👾", "🍄", "⭐️", "🐉", "🤖", "🕹️", "🎮", "👻"]   // 全球公认经典游戏形象
   private func currentCat() -> String { spritePool[combo % spritePool.count] }   // 念完一句随机换形象
 
   private let placeholder = """
@@ -409,8 +433,44 @@ final class TeleprompterWindow: NSWindow {
     setupControlBar()
     setupJourney()
     setupRescue()
+    contentView?.addSubview(resizeHandle)   // 右下角拖拽手柄(最上层)
     layoutContents()
     startScrolling()
+  }
+
+  // MARK: - 自由拖拽改大小
+
+  // 框内控件: 速度 / 字体(不再藏右键)
+  @objc private func speedDown() { speed = max(0.1, ((speed * 10).rounded() - 1) / 10); showStatus("速度 \(speed)") }
+  @objc private func speedUp() { speed = min(2.0, ((speed * 10).rounded() + 1) / 10); showStatus("速度 \(speed)") }
+  @objc private func fontDown() { fontScale = max(0.5, fontScale - 0.12); layoutContents() }
+  @objc private func fontUp() { fontScale = min(2.2, fontScale + 0.12); layoutContents() }
+  @objc private func pickFont() {
+    let menu = NSMenu()
+    let cur = linesView.fontFamily
+    let sysItem = NSMenuItem(title: "系统默认", action: #selector(setFontFamily(_:)), keyEquivalent: "")
+    sysItem.target = self; sysItem.representedObject = ""; sysItem.state = (cur == nil) ? .on : .off
+    menu.addItem(sysItem); menu.addItem(.separator())
+    for fam in NSFontManager.shared.availableFontFamilies {
+      let i = NSMenuItem(title: fam, action: #selector(setFontFamily(_:)), keyEquivalent: "")
+      i.target = self; i.representedObject = fam; i.state = (cur == fam) ? .on : .off
+      menu.addItem(i)
+    }
+    if let v = contentView { menu.popUp(positioning: nil, at: NSPoint(x: v.bounds.midX, y: v.bounds.midY), in: v) }
+  }
+  @objc private func setFontFamily(_ s: NSMenuItem) {
+    let fam = s.representedObject as? String
+    linesView.fontFamily = (fam?.isEmpty ?? true) ? nil : fam
+  }
+
+  func beginHandleResize() { resizeStartFrame = frame; resizeStartMouse = NSEvent.mouseLocation }
+  func updateHandleResize() {
+    let m = NSEvent.mouseLocation
+    let w = max(360, resizeStartFrame.width + (m.x - resizeStartMouse.x))
+    let h = max(180, resizeStartFrame.height - (m.y - resizeStartMouse.y))   // 顶部不动, 向下长
+    setFrame(NSRect(x: resizeStartFrame.minX, y: resizeStartFrame.maxY - h, width: w, height: h), display: true)
+    layoutContents()
+    linesView.needsLayout = true
   }
 
   // MARK: - 控制条
@@ -429,8 +489,9 @@ final class TeleprompterWindow: NSWindow {
     editButton = mkBtn("编辑", #selector(toggleEdit))
     voiceButton = mkBtn("🎤", #selector(toggleVoice))
     let stack = NSStackView(views: [
-      mkBtn("⏪", #selector(stepBack)), playPauseButton, voiceButton, editButton,
-      mkBtn("小", #selector(sizeSmall)), mkBtn("中", #selector(sizeMedium)), mkBtn("大", #selector(sizeLarge)),
+      mkBtn("⏪", #selector(stepBack)), playPauseButton, editButton,
+      mkBtn("慢", #selector(speedDown)), mkBtn("快", #selector(speedUp)),
+      mkBtn("A-", #selector(fontDown)), mkBtn("A+", #selector(fontUp)), mkBtn("字体", #selector(pickFont)),
       mkBtn("清", #selector(clearScript)), mkBtn("✕", #selector(closePrompter)),
     ])
     stack.orientation = .horizontal; stack.spacing = 5; stack.distribution = .fillEqually
@@ -449,7 +510,7 @@ final class TeleprompterWindow: NSWindow {
     trackFill.backgroundColor = NSColor.systemTeal.withAlphaComponent(0.7).cgColor
     trackFill.cornerRadius = 2
     let s = screenScale
-    spriteLayer.string = "🐱"; spriteLayer.fontSize = 20
+    spriteLayer.string = "👾"; spriteLayer.fontSize = 20
     flagLayer.string = "🏁"; flagLayer.fontSize = 15
     for l in [spriteLayer, flagLayer] {
       l.alignmentMode = .center; l.contentsScale = s
@@ -499,7 +560,7 @@ final class TeleprompterWindow: NSWindow {
   private func layoutContents() {
     guard let cv = contentView else { return }
     let w = cv.bounds.width, h = cv.bounds.height
-    let barH: CGFloat = 24, barW: CGFloat = 322, journeyH: CGFloat = 30
+    let barH: CGFloat = 24, barW: CGFloat = 360, journeyH: CGFloat = 30
     effectView.frame = cv.bounds
     skyView.frame = cv.bounds
     skyGradient.frame = cv.bounds
@@ -520,6 +581,9 @@ final class TeleprompterWindow: NSWindow {
     let rpW = min(w - 40, 380), rpH: CGFloat = 40
     rescuePanel.frame = NSRect(x: (w - rpW) / 2, y: journeyH + 12, width: rpW, height: rpH)
     rescueStack.frame = rescuePanel.bounds.insetBy(dx: 8, dy: 6)
+    resizeHandle.frame = NSRect(x: w - 18, y: 0, width: 18, height: 18)   // 右下角
+    let autoFont = max(14, min(80, (w * 0.048 * fontScale).rounded()))   // 字号随框自适应 × 手动倍数
+    if abs(linesView.fontSize - autoFont) > 0.5 { linesView.fontSize = autoFont }
     updateJourney()
   }
 
@@ -554,10 +618,9 @@ final class TeleprompterWindow: NSWindow {
     linesView.updateDepth()
     updateJourney()
 
-    if !finished, linesView.progress >= 0.992 {          // 抵达终点 → 烟花庆祝
+    if !finished, linesView.progress >= 0.992 {          // 抵达终点(烟花已去掉, 只换庆祝形象)
       finished = true
       spriteLayer.string = "🥳"
-      fireworks()
     }
   }
 
@@ -582,13 +645,13 @@ final class TeleprompterWindow: NSWindow {
                      blue: a.blueComponent + (b.blueComponent - a.blueComponent) * k,
                      alpha: a.alphaComponent + (b.alphaComponent - a.alphaComponent) * k)
     }
-    // 马卡龙色系: 薄荷→蜜桃→薰衣草。天色在文字下层, 提高 alpha+明度盖住深玻璃 → 鲜亮不发灰
-    let dayTop = NSColor(srgbRed: 0.66, green: 0.97, blue: 0.85, alpha: 0.72)   // 薄荷绿
-    let dayBot = NSColor(srgbRed: 0.74, green: 0.93, blue: 1.0, alpha: 0.55)    // 浅天蓝
-    let duskTop = NSColor(srgbRed: 1.0, green: 0.74, blue: 0.80, alpha: 0.74)   // 蜜桃粉
-    let duskBot = NSColor(srgbRed: 1.0, green: 0.88, blue: 0.66, alpha: 0.58)   // 鹅黄
-    let nightTop = NSColor(srgbRed: 0.74, green: 0.68, blue: 1.0, alpha: 0.76)  // 薰衣草紫
-    let nightBot = NSColor(srgbRed: 0.86, green: 0.78, blue: 1.0, alpha: 0.60)  // 丁香
+    // 科技感深色冷调: 深空蓝 → 青电光 → 深紫极光。深邃克制, 比糖果色高级大气
+    let dayTop = NSColor(srgbRed: 0.05, green: 0.10, blue: 0.20, alpha: 0.82)   // 深空蓝
+    let dayBot = NSColor(srgbRed: 0.04, green: 0.16, blue: 0.26, alpha: 0.66)   // 深青蓝
+    let duskTop = NSColor(srgbRed: 0.03, green: 0.14, blue: 0.26, alpha: 0.84)  // 靛青
+    let duskBot = NSColor(srgbRed: 0.00, green: 0.22, blue: 0.30, alpha: 0.68)  // 青电光
+    let nightTop = NSColor(srgbRed: 0.10, green: 0.06, blue: 0.24, alpha: 0.86) // 深紫
+    let nightBot = NSColor(srgbRed: 0.06, green: 0.12, blue: 0.30, alpha: 0.70) // 蓝紫极光
     let top: NSColor, bot: NSColor
     if p < 0.5 { top = mix(dayTop, duskTop, p / 0.5); bot = mix(dayBot, duskBot, p / 0.5) }
     else { top = mix(duskTop, nightTop, (p - 0.5) / 0.5); bot = mix(duskBot, nightBot, (p - 0.5) / 0.5) }
@@ -605,7 +668,6 @@ final class TeleprompterWindow: NSWindow {
     spark(at: focusPoint())
     if !finished { spriteLayer.string = currentCat() }   // 每念完一句换一只
     hopSprite()
-    if combo % 5 == 0 { hearts(at: spritePointInFX()) }
   }
 
   private func refreshCombo(pulse: Bool) {

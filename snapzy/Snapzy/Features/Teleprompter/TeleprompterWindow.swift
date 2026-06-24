@@ -30,7 +30,7 @@ final class TeleprompterWindow: NSWindow {
                styleMask: [.borderless], backing: .buffered, defer: false)
     sharingType = .readOnly
     isOpaque = false
-    backgroundColor = NSColor.black.withAlphaComponent(0.62)
+    backgroundColor = NSColor.black.withAlphaComponent(0.92) // 接近不透明:主播看清(隐形靠 sharingType=.none, 不靠视觉透明)
     hasShadow = true
     level = NSWindow.Level(rawValue: NSWindow.Level.floating.rawValue + 1)
     collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -49,6 +49,7 @@ final class TeleprompterWindow: NSWindow {
     textView.isHorizontallyResizable = false
     textView.textContainer?.widthTracksTextView = true
     textView.isEditable = true
+    textView.isRichText = false // 粘贴强制纯文本: 不带来源的颜色/字体, 统一显示
     textView.drawsBackground = false
     textView.textColor = .white
     textView.insertionPointColor = .white
@@ -89,6 +90,7 @@ final class TeleprompterWindow: NSWindow {
       mkBtn("小", #selector(sizeSmall)),
       mkBtn("中", #selector(sizeMedium)),
       mkBtn("大", #selector(sizeLarge)),
+      mkBtn("清", #selector(clearScript)),
       mkBtn("✕", #selector(closePrompter)),
     ])
     stack.orientation = .horizontal
@@ -103,7 +105,7 @@ final class TeleprompterWindow: NSWindow {
   private func layoutContents() {
     guard let cv = contentView else { return }
     let w = cv.bounds.width, h = cv.bounds.height
-    let barH: CGFloat = 24, barW: CGFloat = 170
+    let barH: CGFloat = 24, barW: CGFloat = 205
     controlBar.frame = NSRect(x: w - barW - 4, y: h - barH - 4, width: barW, height: barH) // 贴最右上角
     scrollView.frame = NSRect(x: 14, y: 12, width: w - 28, height: h - barH - 16)
     textView.frame = NSRect(x: 0, y: 0, width: scrollView.contentSize.width, height: textView.frame.height)
@@ -200,6 +202,19 @@ final class TeleprompterWindow: NSWindow {
     let fi = NSMenuItem(title: "Font 字号", action: nil, keyEquivalent: "")
     menu.addItem(fi); menu.setSubmenu(fontSub, for: fi)
 
+    // 字色 Color
+    let colorSub = NSMenu()
+    let colors: [(String, NSColor)] = [
+      ("White 白", .white), ("Yellow 黄", .systemYellow),
+      ("Green 绿", .systemGreen), ("Cyan 青", .systemTeal), ("Pink 粉", .systemPink),
+    ]
+    for (t, c) in colors {
+      let i = NSMenuItem(title: t, action: #selector(setTextColor(_:)), keyEquivalent: "")
+      i.target = self; i.representedObject = c; colorSub.addItem(i)
+    }
+    let ci = NSMenuItem(title: "Color 字色", action: nil, keyEquivalent: "")
+    menu.addItem(ci); menu.setSubmenu(colorSub, for: ci)
+
     if let v = contentView { NSMenu.popUpContextMenu(menu, with: event, for: v) }
   }
 
@@ -227,6 +242,12 @@ final class TeleprompterWindow: NSWindow {
   @objc private func setFontSize(_ s: NSMenuItem) {
     if let v = s.representedObject as? Double {
       textView.font = NSFont.systemFont(ofSize: CGFloat(v), weight: .semibold)
+    }
+  }
+
+  @objc private func setTextColor(_ s: NSMenuItem) {
+    if let c = s.representedObject as? NSColor {
+      textView.textColor = c
     }
   }
 }

@@ -123,9 +123,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     flushPendingOpenFileURLs()
 
     // 靓相 Shotlit: 显示露脸摄像头 bubble (一期验证)
-    let bubble = CameraBubbleWindow()
-    bubble.show()
-    cameraBubble = bubble
+    // let bubble = CameraBubbleWindow()
+    // bubble.show()
+    // cameraBubble = bubble
 
     // 靓相 Shotlit: 显示隐形提词器 (先可见验 UI, 确认后设 hiddenFromCapture)
     let prompter = TeleprompterWindow()

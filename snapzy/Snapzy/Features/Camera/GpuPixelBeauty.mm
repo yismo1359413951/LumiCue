@@ -55,6 +55,7 @@ using namespace gpupixel;
     return nil;
   }
   _source->AddSink(_reshape)->AddSink(_beauty)->AddSink(_sink);
+  NSLog(@"[GP] ✅初始化成功(OpenGL+美颜管线) resPath=%@", resourcePath);
   return self;
 }
 
@@ -64,10 +65,11 @@ using namespace gpupixel;
              eyeZoom:(float)eyeZoom {
   if (!_glContext) return;
   [_glContext makeCurrentContext];
-  _beauty->SetBlurAlpha(smoothing);
-  _beauty->SetWhite(whitening);
-  _reshape->SetFaceSlimLevel(faceSlim);
-  _reshape->SetEyeZoomLevel(eyeZoom);
+  // 入参均 0~1(对应滑块 0~100), 内部缩放到 GpuPixel 各自合适范围
+  _beauty->SetBlurAlpha(smoothing);              // 磨皮 0~1
+  _beauty->SetWhite(whitening * 0.5f);           // 美白 0~0.5
+  _reshape->SetFaceSlimLevel(faceSlim * 0.05f);  // 瘦脸 0~0.05
+  _reshape->SetEyeZoomLevel(eyeZoom * 0.1f);     // 大眼 0~0.1
 }
 
 - (nullable NSData *)processBGRA:(const uint8_t *)data
@@ -93,6 +95,11 @@ using namespace gpupixel;
   const uint8_t *rgba = _sink->GetRgbaBuffer();
   int ow = _sink->GetWidth();
   int oh = _sink->GetHeight();
+  static int fc = 0;
+  if (++fc % 30 == 1) {
+    NSLog(@"[GP] frame#%d in=%dx%d landmarks=%zu → out rgba=%p %dx%d",
+          fc, width, height, landmarks.size(), (const void *)rgba, ow, oh);
+  }
   if (!rgba || ow <= 0 || oh <= 0) return nil;
   if (outWidth) *outWidth = ow;
   if (outHeight) *outHeight = oh;

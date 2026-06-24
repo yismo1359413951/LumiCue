@@ -26,6 +26,7 @@ final class CameraCaptureService: NSObject {
   nonisolated(unsafe) var gpWhitening: Float = 0.3  // 美白
   nonisolated(unsafe) var gpFaceSlim: Float = 0.0   // 瘦脸
   nonisolated(unsafe) var gpEyeZoom: Float = 0.0    // 大眼
+  nonisolated(unsafe) var currentDeviceID: String?  // 当前摄像头设备唯一ID
 
   /// GpuPixel 资源目录(framework 内含 models/ 和 res/)
   nonisolated private static var gpuResourcePath: String {
@@ -52,6 +53,25 @@ final class CameraCaptureService: NSObject {
 
   func stop() {
     if session.isRunning { session.stopRunning() }
+  }
+
+  /// 所有可用摄像头(含 iPhone 连续互通相机, 画质秒杀 Mac 前置)。
+  func availableCameras() -> [AVCaptureDevice] {
+    var types: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera]
+    if #available(macOS 14.0, *) { types.append(.external); types.append(.continuityCamera) }
+    return AVCaptureDevice.DiscoverySession(
+      deviceTypes: types, mediaType: .video, position: .unspecified).devices
+  }
+
+  /// 切换摄像头(重配 session input, 保留 output)。
+  func switchCamera(to device: AVCaptureDevice) {
+    session.beginConfiguration()
+    for input in session.inputs { session.removeInput(input) }
+    if let input = try? AVCaptureDeviceInput(device: device), session.canAddInput(input) {
+      session.addInput(input)
+      currentDeviceID = device.uniqueID
+    }
+    session.commitConfiguration()
   }
 
   private func configureAndRun() {

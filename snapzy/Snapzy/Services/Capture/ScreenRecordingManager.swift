@@ -46,8 +46,8 @@ enum VideoQuality: String, CaseIterable, Codable {
   /// Effective bitrate = width * height * fps * bitsPerPixelPerFrame, then clamped.
   var bitsPerPixelPerFrame: Double {
     switch self {
-    case .high: return 0.20
-    case .medium: return 0.13
+    case .high: return 0.28   // 提高(屏幕文字/细节更锐, 治"录屏糊")
+    case .medium: return 0.15
     case .low: return 0.08
     }
   }

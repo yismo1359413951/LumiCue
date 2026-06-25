@@ -1375,7 +1375,7 @@ final class TeleprompterWindow: NSWindow {
   @objc private func sizeMedium() { resize(to: 680) }
   @objc private func sizeLarge() { resize(to: 860) }
 
-  @objc private func closePrompter() { timer?.invalidate(); orderOut(nil) }
+  @objc private func closePrompter() { timer?.invalidate(); NSApp.terminate(nil) }   // 纯提词器: ✕ 即退出 app
 
   private func resize(to width: CGFloat) {
     let h = width * 0.47

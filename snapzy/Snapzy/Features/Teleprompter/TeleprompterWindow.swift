@@ -295,7 +295,7 @@ private final class LinesView: NSView {
     if focusGlow, focusIdx < lineLayers.count {
       let layer = lineLayers[focusIdx]
       let pulse = 0.5 + 0.5 * sin(CACurrentMediaTime() * 2.4)
-      layer.shadowColor = NSColor(srgbRed: 0.35, green: 0.95, blue: 1, alpha: 1).cgColor
+      layer.shadowColor = NSColor(srgbRed: 0.72, green: 0.45, blue: 1, alpha: 1).cgColor   // 紫色呼吸光晕
       layer.shadowRadius = 14 + 14 * pulse      // 更强光晕(她说看不出区别)
       layer.shadowOpacity = Float(0.9 + 0.1 * pulse)
       layer.shadowOffset = .zero
@@ -458,6 +458,9 @@ final class TeleprompterWindow: NSWindow {
     skyView.wantsLayer = true
     skyGradient.startPoint = CGPoint(x: 0.5, y: 0)
     skyGradient.endPoint = CGPoint(x: 0.5, y: 1)
+    // 紫色主调: 一层淡紫氛围(顶部偏紫, 半透明不挡字)
+    skyGradient.colors = [NSColor(srgbRed: 0.32, green: 0.16, blue: 0.52, alpha: 0.22).cgColor,
+                          NSColor(srgbRed: 0.10, green: 0.06, blue: 0.20, alpha: 0.10).cgColor]
     skyView.layer?.addSublayer(skyGradient)
     contentView?.addSubview(skyView)
 
@@ -605,18 +608,19 @@ final class TeleprompterWindow: NSWindow {
     trackLayer.backgroundColor = NSColor.white.withAlphaComponent(0.14).cgColor
     trackLayer.cornerRadius = 2
     // 干净的发光进度填充(青→紫渐变 + 柔光), 替代小人赛道
-    trackFill.colors = [NSColor.systemTeal.cgColor, NSColor(srgbRed: 0.66, green: 0.55, blue: 0.98, alpha: 1).cgColor]
+    trackFill.colors = [NSColor(srgbRed: 0.51, green: 0.55, blue: 0.97, alpha: 1).cgColor,
+                        NSColor(srgbRed: 0.85, green: 0.27, blue: 0.94, alpha: 1).cgColor]   // 靛→紫红
     trackFill.startPoint = CGPoint(x: 0, y: 0.5); trackFill.endPoint = CGPoint(x: 1, y: 0.5)
     trackFill.cornerRadius = 2
-    trackFill.shadowColor = NSColor.systemTeal.cgColor
+    trackFill.shadowColor = NSColor(srgbRed: 0.66, green: 0.33, blue: 0.97, alpha: 1).cgColor
     trackFill.shadowRadius = 5; trackFill.shadowOpacity = 0.85; trackFill.shadowOffset = .zero
     // 发光彗星头: 进度前端一颗亮点 + 青色柔光, 随时间脉冲(Vibe Island 那种醒目感)
     headDot.backgroundColor = NSColor.white.cgColor
     headDot.cornerRadius = 7
     headDot.bounds = CGRect(x: 0, y: 0, width: 14, height: 14)
     headDot.borderWidth = 2
-    headDot.borderColor = NSColor(srgbRed: 0.5, green: 0.97, blue: 1, alpha: 0.9).cgColor
-    headDot.shadowColor = NSColor(srgbRed: 0.4, green: 0.95, blue: 1, alpha: 1).cgColor
+    headDot.borderColor = NSColor(srgbRed: 0.77, green: 0.71, blue: 0.99, alpha: 0.9).cgColor
+    headDot.shadowColor = NSColor(srgbRed: 0.66, green: 0.33, blue: 0.97, alpha: 1).cgColor
     headDot.shadowRadius = 12; headDot.shadowOpacity = 1.0; headDot.shadowOffset = .zero
     let s = screenScale
     comboLayer.fontSize = 12; comboLayer.alignmentMode = .left; comboLayer.contentsScale = s
@@ -637,7 +641,7 @@ final class TeleprompterWindow: NSWindow {
   private func updateSpeedLabel() {
     speedLabel.string = NSAttributedString(string: String(format: "速度 %.1f×", speed), attributes: [
       .font: NSFont.systemFont(ofSize: 12, weight: .semibold),
-      .foregroundColor: NSColor.systemTeal])
+      .foregroundColor: NSColor(srgbRed: 0.77, green: 0.71, blue: 0.99, alpha: 1)])
   }
 
   // MARK: - 卡壳救场面板(暂停时出现)
@@ -672,10 +676,10 @@ final class TeleprompterWindow: NSWindow {
   private func setupColoredBorder() {
     borderView.wantsLayer = true
     borderGradient.colors = [
-      NSColor.systemTeal.cgColor,
-      NSColor(srgbRed: 0.66, green: 0.55, blue: 0.98, alpha: 1).cgColor,
-      NSColor.systemPink.cgColor,
-      NSColor.systemTeal.cgColor]
+      NSColor(srgbRed: 0.51, green: 0.55, blue: 0.97, alpha: 1).cgColor,   // 靛
+      NSColor(srgbRed: 0.66, green: 0.33, blue: 0.97, alpha: 1).cgColor,   // 紫
+      NSColor(srgbRed: 0.85, green: 0.27, blue: 0.94, alpha: 1).cgColor,   // 紫红
+      NSColor(srgbRed: 0.51, green: 0.55, blue: 0.97, alpha: 1).cgColor]
     borderGradient.locations = [0, 0.4, 0.7, 1]
     borderGradient.startPoint = CGPoint(x: 0, y: 0)
     borderGradient.endPoint = CGPoint(x: 1, y: 1)
@@ -730,8 +734,8 @@ final class TeleprompterWindow: NSWindow {
     ])
     pillTrack.backgroundColor = NSColor.white.withAlphaComponent(0.14).cgColor
     pillTrack.cornerRadius = 1.5
-    pillFill.colors = [NSColor.systemTeal.cgColor,
-                       NSColor(srgbRed: 0.66, green: 0.55, blue: 0.98, alpha: 1).cgColor]
+    pillFill.colors = [NSColor(srgbRed: 0.51, green: 0.55, blue: 0.97, alpha: 1).cgColor,
+                       NSColor(srgbRed: 0.85, green: 0.27, blue: 0.94, alpha: 1).cgColor]
     pillFill.startPoint = CGPoint(x: 0, y: 0.5); pillFill.endPoint = CGPoint(x: 1, y: 0.5)
     pillFill.cornerRadius = 1.5
     pillView.layer?.addSublayer(pillTrack)
@@ -1027,7 +1031,7 @@ final class TeleprompterWindow: NSWindow {
       editScroll.isHidden = true; linesView.isHidden = false; fxView.isHidden = false
     }
     editButton.attributedTitle = Self.barTitle(editing ? "✓完成" : "编辑")
-    editButton.layer?.backgroundColor = (editing ? NSColor.systemTeal.withAlphaComponent(0.75)
+    editButton.layer?.backgroundColor = (editing ? NSColor(srgbRed: 0.66, green: 0.33, blue: 0.97, alpha: 0.8)
                                                   : NSColor.white.withAlphaComponent(0.15)).cgColor
   }
 

@@ -343,7 +343,7 @@ private final class PlainTextView: NSTextView {
   override func paste(_ sender: Any?) {
     guard let s = NSPasteboard.general.string(forType: .string) else { super.paste(sender); return }
     let n = s.components(separatedBy: .newlines)
-      .map { $0.trimmingCharacters(in: .whitespaces) }
+      .map { line in String(line.unicodeScalars.filter { !CharacterSet.whitespaces.contains($0) }) }
       .filter { !$0.isEmpty }
       .joined(separator: "\n")
     insertText(n, replacementRange: selectedRange())
@@ -1120,10 +1120,10 @@ final class TeleprompterWindow: NSWindow {
     }
   }
 
-  /// 去格式: 删多余空行 + 行首尾空格, 文字紧凑连续, 标点保留。
+  /// 去格式: 删空行 + 删行内所有空格(半角/全角/Tab), 一个字挨一个字, 标点保留。
   private func normalize(_ s: String) -> String {
     s.components(separatedBy: .newlines)
-      .map { $0.trimmingCharacters(in: .whitespaces) }
+      .map { line in String(line.unicodeScalars.filter { !CharacterSet.whitespaces.contains($0) }) }
       .filter { !$0.isEmpty }
       .joined(separator: "\n")
   }

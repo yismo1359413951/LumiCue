@@ -79,10 +79,11 @@ final class AppCoordinator {
       context: ["crashPrompt": (didCrash && DiagnosticLogger.shared.isEnabled) ? "true" : "false"]
     )
 
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-      DiagnosticLogger.shared.log(.debug, .ui, "Splash presentation scheduled")
-      self.presentStartupExperience(configurationAutoImportResult: configurationAutoImportResult)
-    }
+    // 靓相 Shotlit: 只做隐形提词器, 不再弹 Snapzy 欢迎/启动窗
+    // DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+    //   DiagnosticLogger.shared.log(.debug, .ui, "Splash presentation scheduled")
+    //   self.presentStartupExperience(configurationAutoImportResult: configurationAutoImportResult)
+    // }
 
     observeNotifications()
   }

@@ -667,6 +667,22 @@ final class TeleprompterWindow: NSWindow {
   当前这行最大最亮，跟着滚动念就行
   """
 
+  /// 字色可选项(深色背景上清晰的高对比色), 控制条「字色」钮和右键菜单共用一份。
+  static let textColorChoices: [(String, NSColor)] = [
+    ("White 白", .white),
+    ("Yellow 黄", .systemYellow),
+    ("Gold 金", NSColor(srgbRed: 1.0, green: 0.84, blue: 0.10, alpha: 1)),
+    ("Orange 橙", .systemOrange),
+    ("Red 红", .systemRed),
+    ("Pink 粉", .systemPink),
+    ("Magenta 品红", NSColor(srgbRed: 1.0, green: 0.25, blue: 0.80, alpha: 1)),
+    ("Purple 紫", .systemPurple),
+    ("Blue 蓝", .systemBlue),
+    ("Cyan 青", .systemTeal),
+    ("Mint 薄荷", NSColor(srgbRed: 0.40, green: 0.95, blue: 0.75, alpha: 1)),
+    ("Green 绿", .systemGreen),
+  ]
+
   var hiddenFromCapture: Bool = false {
     didSet { sharingType = hiddenFromCapture ? .none : .readOnly }
   }
@@ -777,9 +793,7 @@ final class TeleprompterWindow: NSWindow {
   }
   @objc private func pickColor() {
     let menu = NSMenu()
-    let colors: [(String, NSColor)] = [
-      ("White 白", .white), ("Yellow 黄", .systemYellow), ("Green 绿", .systemGreen),
-      ("Cyan 青", .systemTeal), ("Pink 粉", .systemPink), ("Orange 橙", .systemOrange)]
+    let colors = Self.textColorChoices
     let cur = linesView.textColor
     for (t, c) in colors {
       let i = NSMenuItem(title: t, action: #selector(setTextColor(_:)), keyEquivalent: "")
@@ -1354,12 +1368,12 @@ final class TeleprompterWindow: NSWindow {
     menu.addItem(fi); menu.setSubmenu(fontSub, for: fi)
 
     let colorSub = NSMenu()
-    let colors: [(String, NSColor)] = [
-      ("White 白", .white), ("Yellow 黄", .systemYellow),
-      ("Green 绿", .systemGreen), ("Cyan 青", .systemTeal), ("Pink 粉", .systemPink)]
-    for (t, c) in colors {
+    let curColor = linesView.textColor
+    for (t, c) in Self.textColorChoices {
       let i = NSMenuItem(title: t, action: #selector(setTextColor(_:)), keyEquivalent: "")
-      i.target = self; i.representedObject = c; colorSub.addItem(i)
+      i.target = self; i.representedObject = c
+      i.state = (c == curColor) ? .on : .off
+      colorSub.addItem(i)
     }
     let ci = NSMenuItem(title: "Color 字色", action: nil, keyEquivalent: "")
     menu.addItem(ci); menu.setSubmenu(colorSub, for: ci)

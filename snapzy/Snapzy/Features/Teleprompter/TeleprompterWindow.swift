@@ -102,15 +102,13 @@ enum TeleprompterDisplayTextComposer {
     from script: String,
     wrapWidth: CGFloat,
     font: NSFont,
-    paragraphStyle: NSParagraphStyle,
-    compact: Bool = true
+    paragraphStyle: NSParagraphStyle
   ) -> [String] {
     guard wrapWidth > 1 else { return [] }
-    return script.components(separatedBy: "\n").flatMap { rawLine -> [String] in
-      // compact=true: 删行内空格"一个字挨一个字"; false: 原样保留(空格/缩进都在)
-      let line = compact ? TeleprompterScriptSanitizer.compactLine(rawLine) : rawLine
-      guard !line.isEmpty else { return [String]() }
-      return wrapLine(line, wrapWidth: wrapWidth, font: font, paragraphStyle: paragraphStyle)
+    return script.components(separatedBy: "\n").flatMap { rawLine in
+      let compact = TeleprompterScriptSanitizer.compactLine(rawLine)
+      guard !compact.isEmpty else { return [String]() }
+      return wrapLine(compact, wrapWidth: wrapWidth, font: font, paragraphStyle: paragraphStyle)
     }
   }
 
@@ -291,7 +289,6 @@ final class VoiceFollower: NSObject {
 @MainActor
 private final class LinesView: NSView {
   var script: String = "" { didSet { rebuild() } }
-  var compactMode: Bool = true { didSet { rebuild() } }   // true=一个字挨一个字 / false=原样保留格式
   var fontSize: CGFloat = 30 { didSet { rebuild() } }
   var fontFamily: String? = nil { didSet { rebuild() } }
   var textColor: NSColor = .white { didSet { recolor() } }
@@ -357,8 +354,7 @@ private final class LinesView: NSView {
       from: script,
       wrapWidth: wrapWidth,
       font: curFont,
-      paragraphStyle: curPara,
-      compact: compactMode
+      paragraphStyle: curPara
     ) {
       let attributed = TeleprompterDisplayTextComposer.attributedLine(
         for: raw,
@@ -580,12 +576,8 @@ private final class BarButton: NSButton {
 @MainActor
 private final class PlainTextView: NSTextView, NSTextViewDelegate {
 
-  /// 返回当前是否"一个字挨一个字"模式; 原格式模式则放行不去空格。
-  var compactProvider: (() -> Bool)?
-
-  /// 总闸: 所有文本变更(键入/粘贴/拖拽/输入法确认)都经过这里。挨字模式含空格就拦下插清洗版。
+  /// 总闸: 所有文本变更(键入/粘贴/拖拽/输入法确认)都经过这里。含空格就拦下, 插清洗版。
   func textView(_ view: NSTextView, shouldChangeTextIn range: NSRange, replacementString text: String?) -> Bool {
-    guard compactProvider?() ?? true else { return true }   // 原格式模式: 原样放行
     guard let text, !text.isEmpty else { return true }
     let cleaned = TeleprompterScriptSanitizer.compactKeepingNewlines(text)
     guard cleaned != text else { return true }   // 本就没空白, 放行
@@ -598,10 +590,10 @@ private final class PlainTextView: NSTextView, NSTextViewDelegate {
   // ⌘V 直接路径(双保险, 不依赖 delegate; 富文本/纯文本两种 selector 都收口到这)。
   override func paste(_ sender: Any?) {
     guard let s = NSPasteboard.general.string(forType: .string) else { super.paste(sender); return }
-    let out = (compactProvider?() ?? true) ? TeleprompterScriptSanitizer.compactKeepingNewlines(s) : s
+    let n = TeleprompterScriptSanitizer.compactKeepingNewlines(s)
     TeleprompterScriptSanitizer.logValue("PlainTextView.paste input", value: s)
-    TeleprompterScriptSanitizer.logValue("PlainTextView.paste output", value: out)
-    insertText(out, replacementRange: selectedRange())
+    TeleprompterScriptSanitizer.logValue("PlainTextView.paste normalized", value: n)
+    insertText(n, replacementRange: selectedRange())
   }
   override func pasteAsPlainText(_ sender: Any?) { paste(sender) }
   override func pasteAsRichText(_ sender: Any?) { paste(sender) }
@@ -661,9 +653,6 @@ final class TeleprompterWindow: NSWindow {
   private var playing = true
   private var editing = false
   private var didRunLaunchClipboardProbe = false
-  private var scriptCompact = true       // 显示模式: true=一个字挨一个字(去空格) / false=原样保留粘贴格式
-  private var rawScript = ""             // 最近一次设入的原文, 供两模式来回切换不丢内容
-  private var modeButton: NSButton!      // 控制条上的模式切换钮
 
   // 游戏状态
   private var combo = 0
@@ -745,7 +734,6 @@ final class TeleprompterWindow: NSWindow {
     editText.isRichText = false
     editText.allowsUndo = true
     editText.delegate = editText        // 总闸: 任何文本变更即时去空格(无格式粘贴)
-    editText.compactProvider = { [weak self] in self?.scriptCompact ?? true }   // 受模式开关控制
     editText.drawsBackground = false
     editText.textColor = .white
     editText.insertionPointColor = .white
@@ -840,10 +828,9 @@ final class TeleprompterWindow: NSWindow {
     playPauseButton = mkBtn("⏸", #selector(togglePlay))
     editButton = mkBtn("编辑", #selector(toggleEdit))
     voiceButton = mkBtn("🎤", #selector(toggleVoice))
-    modeButton = mkBtn("挨字", #selector(toggleCompactMode))   // 挨字(去空格) ⇄ 原格(保留格式)
-    // 全部控制堆右上: 回退·暂停·编辑·模式·框小中大·字号·字体·字色·清·关闭
+    // 全部控制堆右上: 回退·暂停·编辑·框小中大·字号·字体·字色·清·关闭
     let stack = NSStackView(views: [
-      mkBtn("⏪", #selector(stepBack)), playPauseButton, editButton, modeButton,
+      mkBtn("⏪", #selector(stepBack)), playPauseButton, editButton,
       mkBtn("慢", #selector(speedDown)), mkBtn("快", #selector(speedUp)),
       mkBtn("小", #selector(sizeSmall)), mkBtn("中", #selector(sizeMedium)), mkBtn("大", #selector(sizeLarge)),
       mkBtn("A-", #selector(fontDown)), mkBtn("A+", #selector(fontUp)),
@@ -862,7 +849,6 @@ final class TeleprompterWindow: NSWindow {
       stack.bottomAnchor.constraint(equalTo: controlBar.bottomAnchor, constant: -3),
     ])
     contentView?.addSubview(controlBar)
-    updateModeButton()      // 初始化模式钮外观(默认"挨字"高亮)
   }
 
   // MARK: - 底部光之路 + 精灵 + 连击
@@ -1117,9 +1103,6 @@ final class TeleprompterWindow: NSWindow {
     orderFrontRegardless()
     maybeAutopasteClipboardForDebugVerification()
     maybeRunEditPasteProbe()
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
-      self?.exportRenderSampleIfRequested()
-    }
   }
 
   var overlayWindowID: CGWindowID { CGWindowID(windowNumber) }
@@ -1291,7 +1274,7 @@ final class TeleprompterWindow: NSWindow {
   @objc private func toggleEdit() {
     editing.toggle()
     if editing {
-      editText.string = scriptCompact ? normalize(rawScript) : rawScript   // 按当前模式回填编辑框
+      editText.string = normalize(linesView.script)   // 编辑框也去空格(之前漏了这个面)
       editScroll.isHidden = false; linesView.isHidden = true; fxView.isHidden = true
       rescuePanel.isHidden = true
       makeKeyAndOrderFront(nil); makeFirstResponder(editText)
@@ -1402,33 +1385,11 @@ final class TeleprompterWindow: NSWindow {
 
   /// 设新稿到显示态(去格式 + 复位)。粘贴/导入/编辑完成统一走这里。
   private func setLiveScript(_ s: String) {
-    rawScript = s                       // 永远存原文, 切模式时可逆
+    let normalized = normalize(s)
     TeleprompterScriptSanitizer.logValue("setLiveScript input", value: s)
-    applyDisplay()
+    TeleprompterScriptSanitizer.logValue("setLiveScript normalized", value: normalized)
+    linesView.script = normalized
     linesView.scrollOffset = 0; combo = 0; finished = false; refreshCombo(pulse: false)
-  }
-
-  /// 按当前模式把 rawScript 渲染到显示面: 挨字→去空格, 原格→原样。
-  private func applyDisplay() {
-    linesView.compactMode = scriptCompact
-    let shown = scriptCompact ? normalize(rawScript) : rawScript
-    TeleprompterScriptSanitizer.logValue(scriptCompact ? "applyDisplay 挨字" : "applyDisplay 原格", value: shown)
-    linesView.script = shown
-  }
-
-  /// 切换"一个字挨一个字" ⇄ "原样保留格式"。基于 rawScript, 来回切不丢内容。
-  @objc private func toggleCompactMode() {
-    scriptCompact.toggle()
-    if editing { editText.string = scriptCompact ? normalize(rawScript) : rawScript }
-    applyDisplay()
-    updateModeButton()
-  }
-
-  private func updateModeButton() {
-    modeButton?.attributedTitle = Self.barTitle(scriptCompact ? "挨字" : "原格")
-    modeButton?.layer?.backgroundColor = (scriptCompact
-      ? NSColor(srgbRed: 0.66, green: 0.33, blue: 0.97, alpha: 0.8)
-      : NSColor.white.withAlphaComponent(0.15)).cgColor
   }
 
   private func maybeAutopasteClipboardForDebugVerification() {
@@ -1460,36 +1421,6 @@ final class TeleprompterWindow: NSWindow {
     TeleprompterScriptSanitizer.logValue("probe editText AFTER paste", value: editText.string)
 
     if editing { toggleEdit() }           // 退出编辑 → 走 setLiveScript → 渲染面
-  }
-
-  /// 自检导出: 把隐形渲染面真实渲染成 PNG(绕过 sharingType=.none 截图拍不到)。
-  /// 一次导出两种模式各一张, 用于肉眼核对"挨字"与"原格"都生效。
-  private func exportRenderSampleIfRequested() {
-    guard let base = ProcessInfo.processInfo.environment["SNAPZY_EXPORT_SAMPLE_PATH"] else { return }
-    let saved = scriptCompact
-    scriptCompact = true;  applyDisplay(); exportLinesPNG(base.replacingOccurrences(of: ".png", with: "-compact.png"))
-    scriptCompact = false; applyDisplay(); exportLinesPNG(base.replacingOccurrences(of: ".png", with: "-raw.png"))
-    scriptCompact = saved; applyDisplay()
-  }
-
-  private func exportLinesPNG(_ path: String) {
-    linesView.layoutSubtreeIfNeeded()
-    linesView.displayIfNeeded()
-    let b = linesView.bounds
-    guard b.width > 1, b.height > 1,
-          let rep = linesView.bitmapImageRepForCachingDisplay(in: b) else { return }
-    linesView.cacheDisplay(in: b, to: rep)
-    let img = NSImage(size: b.size)
-    img.lockFocus()
-    NSColor(srgbRed: 0.12, green: 0.07, blue: 0.22, alpha: 1).setFill()
-    NSBezierPath(rect: NSRect(origin: .zero, size: b.size)).fill()
-    rep.draw(in: NSRect(origin: .zero, size: b.size))
-    img.unlockFocus()
-    if let tiff = img.tiffRepresentation, let bm = NSBitmapImageRep(data: tiff),
-       let png = bm.representation(using: .png, properties: [:]) {
-      try? png.write(to: URL(fileURLWithPath: path))
-      NSLog("[Teleprompter] exported: %@ (%.0fx%.0f)", path, b.width, b.height)
-    }
   }
 
   /// 清空: 回显示态 + 留一行提示, 你直接 ⌘V 当场就显示(不用点完成)。

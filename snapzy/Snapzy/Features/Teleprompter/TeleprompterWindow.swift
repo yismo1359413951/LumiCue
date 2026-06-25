@@ -19,6 +19,75 @@ import UniformTypeIdentifiers
 import Speech
 import AVFoundation
 
+private enum TeleprompterScriptSanitizer {
+  private static let extraWhitespaceScalars: Set<UInt32> = [
+    0x0085,
+    0x00A0,
+    0x1680,
+    0x180E,
+    0x200B,
+    0x2028,
+    0x2029,
+    0x202F,
+    0x205F,
+    0x2060,
+    0x3000,
+    0xFEFF,
+  ]
+
+  nonisolated static func normalize(_ script: String) -> String {
+    script.components(separatedBy: .newlines)
+      .map(compactLine(_:))
+      .filter { !$0.isEmpty }
+      .joined(separator: "\n")
+  }
+
+  nonisolated static func compactLine(_ line: String) -> String {
+    String(line.unicodeScalars.filter { !isRemovableWhitespace($0) })
+  }
+
+  nonisolated static func isDebugLoggingEnabled() -> Bool {
+    ProcessInfo.processInfo.environment["SNAPZY_TELEPROMPTER_LOG_RENDER"] == "1"
+  }
+
+  nonisolated static func shouldAutopasteClipboardOnLaunch() -> Bool {
+    ProcessInfo.processInfo.environment["SNAPZY_TELEPROMPTER_AUTOPASTE_CLIPBOARD"] == "1"
+  }
+
+  nonisolated static func logValue(_ label: String, value: String) {
+    guard isDebugLoggingEnabled() else { return }
+    NSLog("[Teleprompter] %@: \"%@\" | scalars: %@", label, escaped(value), scalarList(value))
+  }
+
+  nonisolated static func logRenderedLines(_ lines: [String]) {
+    guard isDebugLoggingEnabled() else { return }
+    NSLog("[Teleprompter] rendered line count: %ld", lines.count)
+    for (index, line) in lines.enumerated() {
+      NSLog("[Teleprompter] rendered[%ld]: \"%@\" | scalars: %@",
+            index, escaped(line), scalarList(line))
+    }
+  }
+
+  private nonisolated static func isRemovableWhitespace(_ scalar: UnicodeScalar) -> Bool {
+    let value = scalar.value
+    if CharacterSet.whitespacesAndNewlines.contains(scalar) { return true }
+    if (0x2000...0x200A).contains(value) { return true }
+    return extraWhitespaceScalars.contains(value)
+  }
+
+  private nonisolated static func escaped(_ value: String) -> String {
+    value
+      .replacingOccurrences(of: "\\", with: "\\\\")
+      .replacingOccurrences(of: "\n", with: "\\n")
+      .replacingOccurrences(of: "\r", with: "\\r")
+      .replacingOccurrences(of: "\t", with: "\\t")
+  }
+
+  private nonisolated static func scalarList(_ value: String) -> String {
+    value.unicodeScalars.map { String(format: "U+%04X", $0.value) }.joined(separator: " ")
+  }
+}
+
 // MARK: - 语音跟随引擎(本地识别, 你说到哪滚到哪)
 
 @MainActor
@@ -109,6 +178,7 @@ private final class LinesView: NSView {
   private var lineCharCounts: [Int] = []
   private var lineHi: [Int] = []
   private var lineBuckets: [Int] = []
+  private var lastLoggedRenderedSignature = ""
   private var curFont: NSFont = .systemFont(ofSize: 30, weight: .semibold)
   private let curPara: NSMutableParagraphStyle = {
     let p = NSMutableParagraphStyle(); p.alignment = .center; p.lineBreakMode = .byWordWrapping; return p
@@ -145,8 +215,8 @@ private final class LinesView: NSView {
     var cursor: CGFloat = 0
 
     for raw0 in script.components(separatedBy: "\n") {
-      // 显示层强制去格式: 删行内所有空格(含全角)+跳过空行 → 一个字挨一个字, 路径无关
-      let raw = String(raw0.unicodeScalars.filter { !CharacterSet.whitespaces.contains($0) })
+      // 显示层再次走统一清洗, 防止某个入口漏掉 Unicode 空白后直接进入渲染层。
+      let raw = TeleprompterScriptSanitizer.compactLine(raw0)
       if raw.isEmpty { continue }
       let attrs: [NSAttributedString.Key: Any] = [.font: curFont, .paragraphStyle: curPara]
       let bounding = (raw as NSString).boundingRect(
@@ -175,7 +245,15 @@ private final class LinesView: NSView {
       lineBuckets.append(-1)
       cursor += h + lineGap
     }
+    maybeLogRenderedLines()
     updateDepth()
+  }
+
+  private func maybeLogRenderedLines() {
+    let signature = lineTexts.joined(separator: "\u{241E}")
+    guard signature != lastLoggedRenderedSignature else { return }
+    lastLoggedRenderedSignature = signature
+    TeleprompterScriptSanitizer.logRenderedLines(lineTexts)
   }
 
   private func applyKaraoke(_ i: Int, _ n: Int) {
@@ -344,10 +422,9 @@ private final class BarButton: NSButton {
 private final class PlainTextView: NSTextView {
   override func paste(_ sender: Any?) {
     guard let s = NSPasteboard.general.string(forType: .string) else { super.paste(sender); return }
-    let n = s.components(separatedBy: .newlines)
-      .map { line in String(line.unicodeScalars.filter { !CharacterSet.whitespaces.contains($0) }) }
-      .filter { !$0.isEmpty }
-      .joined(separator: "\n")
+    let n = TeleprompterScriptSanitizer.normalize(s)
+    TeleprompterScriptSanitizer.logValue("PlainTextView.paste input", value: s)
+    TeleprompterScriptSanitizer.logValue("PlainTextView.paste normalized", value: n)
     insertText(n, replacementRange: selectedRange())
   }
 }
@@ -405,6 +482,7 @@ final class TeleprompterWindow: NSWindow {
   private var fontScale: CGFloat = 1.0   // 字号手动倍数(叠加在随框自适应上)
   private var playing = true
   private var editing = false
+  private var didRunLaunchClipboardProbe = false
 
   // 游戏状态
   private var combo = 0
@@ -851,6 +929,7 @@ final class TeleprompterWindow: NSWindow {
       setFrameOrigin(NSPoint(x: f.midX - frame.width / 2, y: f.maxY - frame.height - 16))
     }
     orderFrontRegardless()
+    maybeAutopasteClipboardForDebugVerification()
   }
 
   var overlayWindowID: CGWindowID { CGWindowID(windowNumber) }
@@ -1128,16 +1207,26 @@ final class TeleprompterWindow: NSWindow {
 
   /// 去格式: 删空行 + 删行内所有空格(半角/全角/Tab), 一个字挨一个字, 标点保留。
   private func normalize(_ s: String) -> String {
-    s.components(separatedBy: .newlines)
-      .map { line in String(line.unicodeScalars.filter { !CharacterSet.whitespaces.contains($0) }) }
-      .filter { !$0.isEmpty }
-      .joined(separator: "\n")
+    TeleprompterScriptSanitizer.normalize(s)
   }
 
   /// 设新稿到显示态(去格式 + 复位)。粘贴/导入/编辑完成统一走这里。
   private func setLiveScript(_ s: String) {
-    linesView.script = normalize(s)
+    let normalized = normalize(s)
+    TeleprompterScriptSanitizer.logValue("setLiveScript input", value: s)
+    TeleprompterScriptSanitizer.logValue("setLiveScript normalized", value: normalized)
+    linesView.script = normalized
     linesView.scrollOffset = 0; combo = 0; finished = false; refreshCombo(pulse: false)
+  }
+
+  private func maybeAutopasteClipboardForDebugVerification() {
+    guard !didRunLaunchClipboardProbe else { return }
+    didRunLaunchClipboardProbe = true
+    guard TeleprompterScriptSanitizer.shouldAutopasteClipboardOnLaunch(),
+          let clipboard = NSPasteboard.general.string(forType: .string),
+          !clipboard.isEmpty else { return }
+    TeleprompterScriptSanitizer.logValue("launch clipboard raw", value: clipboard)
+    setLiveScript(clipboard)
   }
 
   /// 清空: 回显示态 + 留一行提示, 你直接 ⌘V 当场就显示(不用点完成)。

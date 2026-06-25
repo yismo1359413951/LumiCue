@@ -14,6 +14,7 @@
 //
 
 import AppKit
+import QuartzCore
 import UniformTypeIdentifiers
 import Speech
 import AVFoundation
@@ -91,6 +92,7 @@ private final class LinesView: NSView {
   var scrollOffset: CGFloat = 0
   var enableBlur: Bool = true
   var enableKaraoke: Bool = true
+  var focusGlow: Bool = true        // 焦点行呼吸光晕(高级光束)
   /// 一行念完(逐字点亮走完)时回调 → 连击/火花。仅播放时上层处理。
   var onLineComplete: (() -> Void)?
 
@@ -249,16 +251,19 @@ private final class LinesView: NSView {
     let centerX = bounds.width / 2
     let falloff = max(80, H * 0.55)
 
+    var focusIdx = 0; var focusBest = CGFloat.greatestFiniteMagnitude
     CATransaction.begin(); CATransaction.setDisableActions(true)
     for (i, tl) in lineLayers.enumerated() {
       let centerY = focusY + (lineCenters[i] - first) - scrollOffset
       let d = abs(centerY - focusY)
+      if d < focusBest { focusBest = d; focusIdx = i }
       var t = min(1, d / falloff)
       t = t * t * (3 - 2 * t)
 
       tl.position = CGPoint(x: centerX, y: centerY)
       tl.transform = CATransform3DMakeScale(1 - (1 - minScale) * t, 1 - (1 - minScale) * t, 1)
       tl.opacity = Float(1 - (1 - minOpacity) * t)
+      tl.shadowOpacity = 0   // 先清, 焦点行下面单独加呼吸光晕
 
       if enableKaraoke {
         let band = max(36, lineHeights[i])
@@ -283,6 +288,15 @@ private final class LinesView: NSView {
           } else { tl.filters = [] }
         }
       }
+    }
+    // 高级光束: 焦点行呼吸发光(青色光晕, 随时间柔和明灭, 不抢字)
+    if focusGlow, focusIdx < lineLayers.count {
+      let layer = lineLayers[focusIdx]
+      let pulse = 0.5 + 0.5 * sin(CACurrentMediaTime() * 2.2)
+      layer.shadowColor = NSColor(srgbRed: 0.55, green: 0.95, blue: 1, alpha: 1).cgColor
+      layer.shadowRadius = 5 + 6 * pulse
+      layer.shadowOpacity = Float(0.45 + 0.4 * pulse)
+      layer.shadowOffset = .zero
     }
     CATransaction.commit()
   }
@@ -346,6 +360,8 @@ final class TeleprompterWindow: NSWindow {
   private let journeyBar = NSView()
   private let trackLayer = CALayer()
   private let trackFill = CAGradientLayer()         // 发光进度填充(青→紫)
+  private let pixelMask = CAShapeLayer()            // 复古像素: 把进度切成一格格
+  private let speedLabel = CATextLayer()            // 常驻可见速度数值(0.1/0.2…)
   private let comboLayer = CATextLayer()            // 仅语音跟随状态文字用
 
   private var playPauseButton: NSButton!
@@ -471,8 +487,8 @@ final class TeleprompterWindow: NSWindow {
   // MARK: - 自由拖拽改大小
 
   // 框内控件: 速度 / 字体(不再藏右键)
-  @objc private func speedDown() { speed = max(0.1, ((speed * 10).rounded() - 1) / 10); showStatus("速度 \(speed)") }
-  @objc private func speedUp() { speed = min(2.0, ((speed * 10).rounded() + 1) / 10); showStatus("速度 \(speed)") }
+  @objc private func speedDown() { speed = max(0.1, ((speed * 10).rounded() - 1) / 10); updateSpeedLabel() }
+  @objc private func speedUp() { speed = min(2.0, ((speed * 10).rounded() + 1) / 10); updateSpeedLabel() }
   @objc private func fontDown() { fontScale = max(0.5, fontScale - 0.12); layoutContents() }
   @objc private func fontUp() { fontScale = min(2.2, fontScale + 0.12); layoutContents() }
   @objc private func pickFont() {
@@ -548,6 +564,7 @@ final class TeleprompterWindow: NSWindow {
     // 全部控制堆右上: 回退·暂停·编辑·框小中大·字号·字体·字色·清·关闭
     let stack = NSStackView(views: [
       mkBtn("⏪", #selector(stepBack)), playPauseButton, editButton,
+      mkBtn("慢", #selector(speedDown)), mkBtn("快", #selector(speedUp)),
       mkBtn("小", #selector(sizeSmall)), mkBtn("中", #selector(sizeMedium)), mkBtn("大", #selector(sizeLarge)),
       mkBtn("A-", #selector(fontDown)), mkBtn("A+", #selector(fontUp)),
       mkBtn("字体", #selector(pickFont)), mkBtn("字色", #selector(pickColor)),
@@ -579,14 +596,27 @@ final class TeleprompterWindow: NSWindow {
     trackFill.cornerRadius = 2
     trackFill.shadowColor = NSColor.systemTeal.cgColor
     trackFill.shadowRadius = 5; trackFill.shadowOpacity = 0.85; trackFill.shadowOffset = .zero
+    pixelMask.fillColor = NSColor.black.cgColor          // 复古像素: 进度切格(只大框用)
+    trackFill.mask = pixelMask
     let s = screenScale
     comboLayer.fontSize = 12; comboLayer.alignmentMode = .left; comboLayer.contentsScale = s
     comboLayer.anchorPoint = CGPoint(x: 0, y: 0.5); comboLayer.bounds = CGRect(x: 0, y: 0, width: 240, height: 18)
     comboLayer.string = ""
+    speedLabel.contentsScale = s; speedLabel.alignmentMode = .left
+    speedLabel.anchorPoint = CGPoint(x: 0, y: 0.5); speedLabel.bounds = CGRect(x: 0, y: 0, width: 140, height: 16)
+    speedLabel.zPosition = 60
+    contentView?.layer?.addSublayer(speedLabel)
     journeyBar.layer?.addSublayer(trackLayer)
     journeyBar.layer?.addSublayer(trackFill)
     journeyBar.layer?.addSublayer(comboLayer)
     contentView?.addSubview(journeyBar)
+    updateSpeedLabel()
+  }
+
+  private func updateSpeedLabel() {
+    speedLabel.string = NSAttributedString(string: String(format: "速度 %.1f×", speed), attributes: [
+      .font: NSFont.systemFont(ofSize: 12, weight: .semibold),
+      .foregroundColor: NSColor.systemTeal])
   }
 
   // MARK: - 卡壳救场面板(暂停时出现)
@@ -742,7 +772,7 @@ final class TeleprompterWindow: NSWindow {
   private func layoutContents() {
     guard let cv = contentView else { return }
     let w = cv.bounds.width, h = cv.bounds.height
-    let barH: CGFloat = 30, barW: CGFloat = min(w - 16, 500), journeyH: CGFloat = 30
+    let barH: CGFloat = 30, barW: CGFloat = min(w - 16, 560), journeyH: CGFloat = 30
     effectView.frame = cv.bounds
     skyView.frame = cv.bounds
     skyGradient.frame = cv.bounds
@@ -759,6 +789,7 @@ final class TeleprompterWindow: NSWindow {
       let bh: CGFloat = 26, bw: CGFloat = 200
       pillBar.frame = NSRect(x: w - bw - 8, y: h - bh - 6, width: bw, height: bh)   // 右上角控制条
       pillTrack.frame = CGRect(x: 12, y: 6, width: max(20, w - 24), height: 3)       // 底进度
+      speedLabel.position = CGPoint(x: 14, y: 20)                                      // 收起态速度数值
       linesView.frame = NSRect(x: 12, y: 11, width: max(20, w - 24), height: h - bh - 18)
       let cf: CGFloat = 18                                   // 收起态固定小字(不随宽度变大)
       if abs(linesView.fontSize - cf) > 0.5 { linesView.fontSize = cf }
@@ -770,10 +801,16 @@ final class TeleprompterWindow: NSWindow {
     controlBar.frame = NSRect(x: w - barW - 8, y: h - barH - 8, width: barW, height: barH)
 
     journeyBar.frame = NSRect(x: 0, y: 2, width: w, height: journeyH)
-    let trackY: CGFloat = 13, trackH: CGFloat = 4
+    let trackY: CGFloat = 12, trackH: CGFloat = 6
     let left: CGFloat = 18, right = w - 18
-    comboLayer.position = CGPoint(x: 18, y: trackY + trackH / 2 + 14)   // 仅语音诊断状态用
+    comboLayer.position = CGPoint(x: 18, y: trackY + trackH / 2 + 16)   // 仅语音诊断状态用
     trackLayer.frame = CGRect(x: left, y: trackY, width: max(1, right - left), height: trackH)
+    // 复古像素: 把进度切成一格格(mask 在 trackFill 局部坐标, 全宽都画, trackFill 变宽才点亮更多)
+    let fullW = max(1, right - left), cell: CGFloat = 6, gp: CGFloat = 3
+    let pp = CGMutablePath(); var px: CGFloat = 0
+    while px < fullW { pp.addRect(CGRect(x: px, y: 0, width: cell, height: trackH)); px += cell + gp }
+    pixelMask.path = pp
+    speedLabel.position = CGPoint(x: 20, y: journeyH + 10)              // 常驻速度数值(左下)
 
     let contentRect = NSRect(x: 0, y: journeyH + 4, width: w, height: h - barH - journeyH - 14)
     linesView.frame = contentRect

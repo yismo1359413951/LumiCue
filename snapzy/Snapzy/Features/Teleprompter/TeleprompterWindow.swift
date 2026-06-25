@@ -337,6 +337,19 @@ private final class BarButton: NSButton {
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
+/// 编辑框: 粘贴即去格式(删空行/首尾空格, 标点保留), 不用再点完成。
+@MainActor
+private final class PlainTextView: NSTextView {
+  override func paste(_ sender: Any?) {
+    guard let s = NSPasteboard.general.string(forType: .string) else { super.paste(sender); return }
+    let n = s.components(separatedBy: .newlines)
+      .map { $0.trimmingCharacters(in: .whitespaces) }
+      .filter { !$0.isEmpty }
+      .joined(separator: "\n")
+    insertText(n, replacementRange: selectedRange())
+  }
+}
+
 // MARK: - 提词器窗口
 
 @MainActor
@@ -353,7 +366,7 @@ final class TeleprompterWindow: NSWindow {
   private let linesView = LinesView()
   private let fxView = FXView()                     // 火花/烟花/爱心
   private let editScroll = NSScrollView()
-  private let editText = NSTextView()
+  private let editText = PlainTextView()
   private let controlBar = NSView()
 
   // 底部"光之路"+精灵+连击
@@ -1011,7 +1024,9 @@ final class TeleprompterWindow: NSWindow {
       setLiveScript(editText.string)
       editScroll.isHidden = true; linesView.isHidden = false; fxView.isHidden = false
     }
-    editButton.attributedTitle = Self.barTitle(editing ? "完成" : "编辑")
+    editButton.attributedTitle = Self.barTitle(editing ? "✓完成" : "编辑")
+    editButton.layer?.backgroundColor = (editing ? NSColor.systemTeal.withAlphaComponent(0.75)
+                                                  : NSColor.white.withAlphaComponent(0.15)).cgColor
   }
 
   @objc private func sizeSmall() { resize(to: 520) }

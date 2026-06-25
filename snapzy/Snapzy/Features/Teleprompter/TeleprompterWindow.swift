@@ -342,10 +342,8 @@ final class TeleprompterWindow: NSWindow {
   // 底部"光之路"+精灵+连击
   private let journeyBar = NSView()
   private let trackLayer = CALayer()
-  private let trackFill = CALayer()
-  private let spriteLayer = CATextLayer()           // 🐱 小猫精灵(沿路走)
-  private let flagLayer = CATextLayer()             // 🏁 终点
-  private let comboLayer = CATextLayer()            // 🔥 连击数
+  private let trackFill = CAGradientLayer()         // 发光进度填充(青→紫)
+  private let comboLayer = CATextLayer()            // 仅语音跟随状态文字用
 
   private var playPauseButton: NSButton!
   private var editButton: NSButton!
@@ -371,11 +369,11 @@ final class TeleprompterWindow: NSWindow {
   private func currentCat() -> String { spritePool[combo % spritePool.count] }   // 念完一句随机换形象
 
   private let placeholder = """
-  把逐字稿粘贴进来 — 点上面 ✎ 编辑，或直接 ⌘V
+  把逐字稿粘贴进来 — 点上面「编辑」，或直接 ⌘V
 
   提词器只有你看得到，录屏和直播的观众都看不到。
 
-  跟着滚动的节奏念：当前这行最大最亮，念到的字会点亮，念完一行火花一闪、连击 +1。小猫陪你走过这趟光之路，念到结尾会放烟花。
+  跟着滚动的节奏念：当前这行最大最亮、最清楚，上下行往里缩、变暗。框可随意拖动、拖右下角改大小，字会自动重排居中。
   """
 
   var hiddenFromCapture: Bool = false {
@@ -478,6 +476,20 @@ final class TeleprompterWindow: NSWindow {
     let fam = s.representedObject as? String
     linesView.fontFamily = (fam?.isEmpty ?? true) ? nil : fam
   }
+  @objc private func pickColor() {
+    let menu = NSMenu()
+    let colors: [(String, NSColor)] = [
+      ("White 白", .white), ("Yellow 黄", .systemYellow), ("Green 绿", .systemGreen),
+      ("Cyan 青", .systemTeal), ("Pink 粉", .systemPink), ("Orange 橙", .systemOrange)]
+    let cur = linesView.textColor
+    for (t, c) in colors {
+      let i = NSMenuItem(title: t, action: #selector(setTextColor(_:)), keyEquivalent: "")
+      i.target = self; i.representedObject = c
+      i.state = (c == cur) ? .on : .off
+      menu.addItem(i)
+    }
+    if let v = contentView { menu.popUp(positioning: nil, at: NSPoint(x: v.bounds.midX, y: v.bounds.midY), in: v) }
+  }
 
   func beginHandleResize() { resizeStartFrame = frame; resizeStartMouse = NSEvent.mouseLocation }
   func updateHandleResize() {
@@ -514,7 +526,8 @@ final class TeleprompterWindow: NSWindow {
     let stack = NSStackView(views: [
       mkBtn("⏪", #selector(stepBack)), playPauseButton, editButton,
       mkBtn("慢", #selector(speedDown)), mkBtn("快", #selector(speedUp)),
-      mkBtn("A-", #selector(fontDown)), mkBtn("A+", #selector(fontUp)), mkBtn("字体", #selector(pickFont)),
+      mkBtn("A-", #selector(fontDown)), mkBtn("A+", #selector(fontUp)),
+      mkBtn("字体", #selector(pickFont)), mkBtn("字色", #selector(pickColor)),
       mkBtn("清", #selector(clearScript)), mkBtn("✕", #selector(closePrompter)),
     ])
     stack.orientation = .horizontal; stack.spacing = 4; stack.distribution = .fillEqually
@@ -528,24 +541,20 @@ final class TeleprompterWindow: NSWindow {
 
   private func setupJourney() {
     journeyBar.wantsLayer = true
-    trackLayer.backgroundColor = NSColor.white.withAlphaComponent(0.16).cgColor
+    trackLayer.backgroundColor = NSColor.white.withAlphaComponent(0.14).cgColor
     trackLayer.cornerRadius = 2
-    trackFill.backgroundColor = NSColor.systemTeal.withAlphaComponent(0.7).cgColor
+    // 干净的发光进度填充(青→紫渐变 + 柔光), 替代小人赛道
+    trackFill.colors = [NSColor.systemTeal.cgColor, NSColor(srgbRed: 0.66, green: 0.55, blue: 0.98, alpha: 1).cgColor]
+    trackFill.startPoint = CGPoint(x: 0, y: 0.5); trackFill.endPoint = CGPoint(x: 1, y: 0.5)
     trackFill.cornerRadius = 2
+    trackFill.shadowColor = NSColor.systemTeal.cgColor
+    trackFill.shadowRadius = 5; trackFill.shadowOpacity = 0.85; trackFill.shadowOffset = .zero
     let s = screenScale
-    spriteLayer.string = "👾"; spriteLayer.fontSize = 20
-    flagLayer.string = "🏁"; flagLayer.fontSize = 15
-    for l in [spriteLayer, flagLayer] {
-      l.alignmentMode = .center; l.contentsScale = s
-      l.anchorPoint = CGPoint(x: 0.5, y: 0.5); l.bounds = CGRect(x: 0, y: 0, width: 28, height: 28)
-    }
-    comboLayer.fontSize = 13; comboLayer.alignmentMode = .left; comboLayer.contentsScale = s
-    comboLayer.anchorPoint = CGPoint(x: 0, y: 0.5); comboLayer.bounds = CGRect(x: 0, y: 0, width: 90, height: 20)
+    comboLayer.fontSize = 12; comboLayer.alignmentMode = .left; comboLayer.contentsScale = s
+    comboLayer.anchorPoint = CGPoint(x: 0, y: 0.5); comboLayer.bounds = CGRect(x: 0, y: 0, width: 240, height: 18)
     comboLayer.string = ""
     journeyBar.layer?.addSublayer(trackLayer)
     journeyBar.layer?.addSublayer(trackFill)
-    journeyBar.layer?.addSublayer(flagLayer)
-    journeyBar.layer?.addSublayer(spriteLayer)
     journeyBar.layer?.addSublayer(comboLayer)
     contentView?.addSubview(journeyBar)
   }
@@ -583,7 +592,7 @@ final class TeleprompterWindow: NSWindow {
   private func layoutContents() {
     guard let cv = contentView else { return }
     let w = cv.bounds.width, h = cv.bounds.height
-    let barH: CGFloat = 28, barW: CGFloat = 366, journeyH: CGFloat = 30
+    let barH: CGFloat = 28, barW: CGFloat = 412, journeyH: CGFloat = 30
     effectView.frame = cv.bounds
     skyView.frame = cv.bounds
     skyGradient.frame = cv.bounds
@@ -591,11 +600,10 @@ final class TeleprompterWindow: NSWindow {
     controlBar.frame = NSRect(x: w - barW - 6, y: h - barH - 6, width: barW, height: barH)
 
     journeyBar.frame = NSRect(x: 0, y: 2, width: w, height: journeyH)
-    let comboW: CGFloat = 78, flagW: CGFloat = 22, trackY: CGFloat = 13, trackH: CGFloat = 4
-    let left = 12 + comboW, right = w - 14 - flagW
-    comboLayer.position = CGPoint(x: 12, y: trackY + trackH / 2)
+    let trackY: CGFloat = 13, trackH: CGFloat = 4
+    let left: CGFloat = 18, right = w - 18
+    comboLayer.position = CGPoint(x: 18, y: trackY + trackH / 2 + 14)   // 仅语音诊断状态用
     trackLayer.frame = CGRect(x: left, y: trackY, width: max(1, right - left), height: trackH)
-    flagLayer.position = CGPoint(x: right + flagW / 2, y: trackY + trackH / 2)
 
     let contentRect = NSRect(x: 0, y: journeyH + 4, width: w, height: h - barH - journeyH - 14)
     linesView.frame = contentRect
@@ -641,21 +649,15 @@ final class TeleprompterWindow: NSWindow {
     linesView.updateDepth()
     updateJourney()
 
-    if !finished, linesView.progress >= 0.992 {          // 抵达终点(烟花已去掉, 只换庆祝形象)
-      finished = true
-      spriteLayer.string = "🥳"
-    }
+    if !finished, linesView.progress >= 0.992 { finished = true }   // 抵达终点(无庆祝特效)
   }
 
-  /// 进度条填充 + 精灵沿路走 + 上下轻轻颠(陪走感) + 天色随进度。
+  /// 干净的发光进度填充随念稿进度延伸(无小人/无天色)。
   private func updateJourney() {
     let p = linesView.progress
     let t = trackLayer.frame
-    let bob = sin(CGFloat(frameTick) * 0.18) * 2.5
     CATransaction.begin(); CATransaction.setDisableActions(true)
     trackFill.frame = CGRect(x: t.minX, y: t.minY, width: max(0.1, t.width * p), height: t.height)
-    spriteLayer.position = CGPoint(x: t.minX + t.width * p, y: t.midY + 4 + (playing ? bob : 0))
-    skyGradient.colors = skyColors(p)
     CATransaction.commit()
   }
 
@@ -683,43 +685,11 @@ final class TeleprompterWindow: NSWindow {
 
   // MARK: - 连击 / 火花
 
-  /// 念完一行 → 连击 +1、火花、精灵蹦一下; 每 5 连击撒爱心。
-  private func onLineComplete() {
-    guard playing else { return }
-    combo += 1
-    refreshCombo(pulse: true)
-    spark(at: focusPoint())
-    if !finished { spriteLayer.string = currentCat() }   // 每念完一句换一只
-    hopSprite()
-  }
+  /// 念过一行不再有连击/火花/精灵反馈(走极简高级)。
+  private func onLineComplete() {}
 
-  private func refreshCombo(pulse: Bool) {
-    let s = NSMutableAttributedString(string: combo >= 2 ? "🔥 连念 \(combo) 句" : "",
-      attributes: [.font: NSFont.systemFont(ofSize: 13, weight: .heavy),
-                   .foregroundColor: NSColor.systemOrange])
-    comboLayer.string = s
-    guard pulse, combo >= 2 else { return }
-    let a = CABasicAnimation(keyPath: "transform.scale")
-    a.fromValue = 1.5; a.toValue = 1.0; a.duration = 0.25
-    comboLayer.add(a, forKey: "pop")
-  }
-
-  /// 焦点行中心在 fxView 里的点(非翻转, 左下原点)。
-  private func focusPoint() -> CGPoint {
-    let yTop = linesView.focusViewportY            // 从顶
-    return CGPoint(x: fxView.bounds.midX, y: linesView.frame.maxY - yTop)
-  }
-  private func spritePointInFX() -> CGPoint {
-    CGPoint(x: spriteLayer.position.x, y: journeyBar.frame.minY + spriteLayer.position.y)
-  }
-
-  private func hopSprite() {
-    let a = CABasicAnimation(keyPath: "position.y")
-    let y = spriteLayer.position.y
-    a.fromValue = y; a.toValue = y + 9; a.duration = 0.16
-    a.autoreverses = true; a.timingFunction = CAMediaTimingFunction(name: .easeOut)
-    spriteLayer.add(a, forKey: "hop")
-  }
+  /// 连击显示已撤掉; 保留空实现以清空状态行。
+  private func refreshCombo(pulse: Bool) { comboLayer.string = "" }
 
   /// 一簇短促火花。
   private func spark(at p: CGPoint) {
@@ -804,7 +774,6 @@ final class TeleprompterWindow: NSWindow {
   @objc private func togglePlay() {
     playing.toggle()
     playPauseButton.title = playing ? "⏸" : "▶"
-    if !finished { spriteLayer.string = playing ? currentCat() : "😴" }   // 暂停打盹
     rescuePanel.isHidden = playing || editing                            // 暂停=出救场面板
     if !playing { retreatCount = 0; retreatButton.title = "← 退1句" }
   }
@@ -819,7 +788,6 @@ final class TeleprompterWindow: NSWindow {
     } else {
       linesView.script = editText.string
       linesView.scrollOffset = 0; combo = 0; finished = false; refreshCombo(pulse: false)
-      spriteLayer.string = playing ? currentCat() : "😴"
       editScroll.isHidden = true; linesView.isHidden = false; fxView.isHidden = false
     }
     editButton.title = editing ? "完成" : "编辑"

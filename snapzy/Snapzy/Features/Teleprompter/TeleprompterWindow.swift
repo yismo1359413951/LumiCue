@@ -350,8 +350,17 @@ final class TeleprompterWindow: NSWindow {
 
   private var playPauseButton: NSButton!
   private var editButton: NSButton!
-  private weak var controlStack: NSStackView?
-  private var didLogBar = false
+
+  // 灵动岛: 收起/展开 胶囊
+  private var collapsed = false
+  private var expandedFrame = NSRect.zero
+  private let pillView = NSView()
+  private let pillLabel = NSTextField(labelWithString: "")
+  private var pillPlay: NSButton!
+  private var pillExpand: NSButton!
+  private let pillTrack = CALayer()
+  private let pillFill = CAGradientLayer()
+  private var animTimer: Timer?
   private var voiceButton: NSButton!        // 🎤 语音跟随开关
   private let voiceFollower = VoiceFollower()
   private var voiceMode = false
@@ -453,6 +462,7 @@ final class TeleprompterWindow: NSWindow {
     setupJourney()
     setupRescue()
     contentView?.addSubview(resizeHandle)   // 右下角拖拽手柄
+    setupPill()                              // 灵动岛收起态胶囊(默认隐藏)
     setupColoredBorder()                     // 彩色流光描边(最上层叠加, 不挡点击)
     layoutContents()
     startScrolling()
@@ -541,7 +551,8 @@ final class TeleprompterWindow: NSWindow {
       mkBtn("小", #selector(sizeSmall)), mkBtn("中", #selector(sizeMedium)), mkBtn("大", #selector(sizeLarge)),
       mkBtn("A-", #selector(fontDown)), mkBtn("A+", #selector(fontUp)),
       mkBtn("字体", #selector(pickFont)), mkBtn("字色", #selector(pickColor)),
-      mkBtn("清", #selector(clearScript)), mkBtn("✕", #selector(closePrompter)),
+      mkBtn("清", #selector(clearScript)), mkBtn("收起", #selector(toggleCollapse)),
+      mkBtn("✕", #selector(closePrompter)),
     ])
     stack.orientation = .horizontal; stack.spacing = 3; stack.distribution = .fillEqually
     // 换方法: 用 Auto Layout 钉死填满容器, 不再用 frame(避免 bounds=0 时算出负尺寸→按钮看不见)
@@ -553,7 +564,6 @@ final class TeleprompterWindow: NSWindow {
       stack.topAnchor.constraint(equalTo: controlBar.topAnchor, constant: 3),
       stack.bottomAnchor.constraint(equalTo: controlBar.bottomAnchor, constant: -3),
     ])
-    controlStack = stack
     contentView?.addSubview(controlBar)
   }
 
@@ -630,12 +640,94 @@ final class TeleprompterWindow: NSWindow {
     borderGradient.add(a, forKey: "flow")
   }
 
+  // MARK: - 灵动岛 收起/展开 胶囊
+
+  private func setupPill() {
+    pillView.wantsLayer = true
+    pillView.isHidden = true
+    pillPlay = BarButton(title: "⏸", target: self, action: #selector(togglePlay))
+    pillPlay.isBordered = false; pillPlay.wantsLayer = true
+    pillPlay.attributedTitle = Self.barTitle("⏸")
+    pillPlay.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.15).cgColor
+    pillPlay.layer?.cornerRadius = 9
+    pillExpand = BarButton(title: "⤢", target: self, action: #selector(toggleCollapse))
+    pillExpand.isBordered = false; pillExpand.wantsLayer = true
+    pillExpand.attributedTitle = Self.barTitle("⤢")
+    pillExpand.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.15).cgColor
+    pillExpand.layer?.cornerRadius = 9
+    pillLabel.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+    pillLabel.textColor = .white
+    pillLabel.lineBreakMode = .byTruncatingTail
+    pillLabel.maximumNumberOfLines = 1
+    pillLabel.alignment = .center
+    pillLabel.isBezeled = false; pillLabel.drawsBackground = false; pillLabel.isEditable = false
+    pillTrack.backgroundColor = NSColor.white.withAlphaComponent(0.14).cgColor
+    pillTrack.cornerRadius = 1.5
+    pillFill.colors = [NSColor.systemTeal.cgColor,
+                       NSColor(srgbRed: 0.66, green: 0.55, blue: 0.98, alpha: 1).cgColor]
+    pillFill.startPoint = CGPoint(x: 0, y: 0.5); pillFill.endPoint = CGPoint(x: 1, y: 0.5)
+    pillFill.cornerRadius = 1.5
+    pillView.layer?.addSublayer(pillTrack)
+    pillView.layer?.addSublayer(pillFill)
+    pillView.addSubview(pillPlay)
+    pillView.addSubview(pillLabel)
+    pillView.addSubview(pillExpand)
+    contentView?.addSubview(pillView)
+  }
+
+  /// 念稿态(大框)↔ 收起态(顶部小胶囊)。
+  @objc private func toggleCollapse() {
+    collapsed.toggle()
+    if collapsed {
+      expandedFrame = frame
+      setCollapsedVisibility(true)
+      let pw = min(expandedFrame.width, 340), ph: CGFloat = 50
+      animateFrame(to: NSRect(x: frame.midX - pw / 2, y: frame.maxY - ph, width: pw, height: ph))
+    } else {
+      setCollapsedVisibility(false)
+      animateFrame(to: expandedFrame)
+    }
+  }
+
+  /// true=显示胶囊隐藏大框; false=反之。边框始终在。
+  private func setCollapsedVisibility(_ c: Bool) {
+    pillView.isHidden = !c
+    linesView.isHidden = c
+    controlBar.isHidden = c
+    journeyBar.isHidden = c
+    fxView.isHidden = c
+    resizeHandle.isHidden = c
+    if c { editScroll.isHidden = true; rescuePanel.isHidden = true }
+  }
+
+  /// 逐帧平滑动画(每步 setFrame + 重排, 收展时内容跟着丝滑变)。
+  private func animateFrame(to target: NSRect) {
+    animTimer?.invalidate()
+    let start = frame, steps = 14
+    var i = 0
+    animTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] t in
+      Task { @MainActor in
+        guard let self else { t.invalidate(); return }
+        i += 1
+        let p = min(1, CGFloat(i) / CGFloat(steps))
+        let e = p * p * (3 - 2 * p)
+        let f = NSRect(x: start.minX + (target.minX - start.minX) * e,
+                       y: start.minY + (target.minY - start.minY) * e,
+                       width: start.width + (target.width - start.width) * e,
+                       height: start.height + (target.height - start.height) * e)
+        self.setFrame(f, display: true)
+        self.layoutContents()
+        if p >= 1 { t.invalidate(); self.animTimer = nil }
+      }
+    }
+  }
+
   private var screenScale: CGFloat { screen?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2 }
 
   private func layoutContents() {
     guard let cv = contentView else { return }
     let w = cv.bounds.width, h = cv.bounds.height
-    let barH: CGFloat = 30, barW: CGFloat = min(w - 16, 470), journeyH: CGFloat = 30
+    let barH: CGFloat = 30, barW: CGFloat = min(w - 16, 500), journeyH: CGFloat = 30
     effectView.frame = cv.bounds
     skyView.frame = cv.bounds
     skyGradient.frame = cv.bounds
@@ -645,6 +737,16 @@ final class TeleprompterWindow: NSWindow {
     borderMask.frame = cv.bounds
     borderMask.path = CGPath(roundedRect: cv.bounds.insetBy(dx: 1, dy: 1),
                              cornerWidth: 25, cornerHeight: 25, transform: nil)
+
+    // 收起态胶囊布局: 左播放 · 中当前句 · 右展开 · 底进度
+    pillView.frame = cv.bounds
+    let pad: CGFloat = 8, pb: CGFloat = 34
+    pillPlay.frame = NSRect(x: pad, y: (h - pb) / 2, width: pb, height: pb)
+    pillExpand.frame = NSRect(x: w - pad - pb, y: (h - pb) / 2, width: pb, height: pb)
+    let lx = pad + pb + 6, lw = max(20, w - 2 * (pad + pb + 6))
+    pillLabel.frame = NSRect(x: lx, y: (h - 22) / 2 + 3, width: lw, height: 22)
+    pillTrack.frame = CGRect(x: lx, y: 7, width: lw, height: 3)
+
     controlBar.frame = NSRect(x: w - barW - 8, y: h - barH - 8, width: barW, height: barH)
 
     journeyBar.frame = NSRect(x: 0, y: 2, width: w, height: journeyH)
@@ -664,18 +766,6 @@ final class TeleprompterWindow: NSWindow {
     let autoFont = max(14, min(80, (w * 0.048 * fontScale).rounded()))   // 字号随框自适应 × 手动倍数
     if abs(linesView.fontSize - autoFont) > 0.5 { linesView.fontSize = autoFont }
     updateJourney()
-
-    if !didLogBar, let st = controlStack {
-      didLogBar = true
-      DispatchQueue.main.async { [weak self] in
-        guard let self else { return }
-        let btns = st.arrangedSubviews
-        let f0 = btns.first?.frame ?? .zero
-        NSLog("CTRLBAR_CHECK bar=%@ stack=%@ btnCount=%d firstBtn=%@ winW=%.0f",
-              NSStringFromRect(self.controlBar.frame), NSStringFromRect(st.frame),
-              btns.count, NSStringFromRect(f0), self.frame.width)
-      }
-    }
   }
 
   func show() {
@@ -718,6 +808,11 @@ final class TeleprompterWindow: NSWindow {
     let t = trackLayer.frame
     CATransaction.begin(); CATransaction.setDisableActions(true)
     trackFill.frame = CGRect(x: t.minX, y: t.minY, width: max(0.1, t.width * p), height: t.height)
+    if collapsed {                              // 收起态: 胶囊上显示当前句 + 进度
+      pillLabel.stringValue = linesView.textOfLine(linesView.currentLineIndex)
+      let pt = pillTrack.frame
+      pillFill.frame = CGRect(x: pt.minX, y: pt.minY, width: max(0.1, pt.width * p), height: pt.height)
+    }
     CATransaction.commit()
   }
 
@@ -834,7 +929,8 @@ final class TeleprompterWindow: NSWindow {
   @objc private func togglePlay() {
     playing.toggle()
     playPauseButton.attributedTitle = Self.barTitle(playing ? "⏸" : "▶")
-    rescuePanel.isHidden = playing || editing                            // 暂停=出救场面板
+    pillPlay?.attributedTitle = Self.barTitle(playing ? "⏸" : "▶")
+    rescuePanel.isHidden = playing || editing || collapsed   // 收起态不弹救场面板
     if !playing { retreatCount = 0; retreatButton.title = "← 退1句" }
   }
 

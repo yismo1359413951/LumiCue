@@ -115,23 +115,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // Cleanup orphaned temp capture files from previous sessions
     TempCaptureManager.shared.cleanupOrphanedFiles()
 
-    let coordinator = AppCoordinator(environment: AppEnvironment.live())
-    self.coordinator = coordinator
-    coordinator.applicationDidFinishLaunching()
+    // LumiCue 纯提词器模式: 不启动 Snapzy 的状态栏菜单/录屏/截屏那套(那来自 coordinator),
+    // 只开提词器窗口。打开即提词器, 无"退出Snapzy"状态栏菜单, ✕ 关闭即退出 app。
     didFinishLaunching = true
-    flushPendingDeepLinks()
-    flushPendingOpenFileURLs()
 
-    // 靓相 Shotlit: 显示露脸摄像头 bubble (一期验证)
-    // let bubble = CameraBubbleWindow()
-    // bubble.show()
-    // cameraBubble = bubble
-
-    // 靓相 Shotlit: 显示隐形提词器 (先可见验 UI, 确认后设 hiddenFromCapture)
     let prompter = TeleprompterWindow()
-    prompter.hiddenFromCapture = true // 隐形(控制条/布局已验, 最终录屏/直播隐形)
+    prompter.hiddenFromCapture = true // 隐形(录屏/直播观众看不到)
     prompter.show()
     teleprompter = prompter
+    NSApp.activate(ignoringOtherApps: true)
   }
 
   func applicationWillTerminate(_ notification: Notification) {

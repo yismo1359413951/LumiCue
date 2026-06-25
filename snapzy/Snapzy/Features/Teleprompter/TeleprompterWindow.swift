@@ -99,7 +99,7 @@ private final class LinesView: NSView {
   private let focusFrac: CGFloat = 0.40
   private let minScale: CGFloat = 0.82      // 上下行别缩太小, 保持可读
   private let minOpacity: CGFloat = 0.52    // 上下行别压太暗(读过的不秒消/没读的提前可见)
-  private let lineGap: CGFloat = 10
+  private let lineGap: CGFloat = 5
   private let hPad: CGFloat = 24
 
   private var lineLayers: [CATextLayer] = []

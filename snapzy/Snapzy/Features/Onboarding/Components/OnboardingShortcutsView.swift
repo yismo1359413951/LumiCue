@@ -236,7 +236,7 @@ struct ShortcutsView: View {
   private var shortcutsSubtitle: String {
     onboardingLocalization.string(
       "onboarding.shortcuts.subtitle",
-      defaultValue: "Assign system shortcuts to Snapzy for quick access.",
+      defaultValue: "Assign system shortcuts to LumiCue for quick access.",
       comment: "Onboarding shortcuts step subtitle"
     )
   }
@@ -317,7 +317,7 @@ struct ShortcutsView: View {
     onboardingLocalization.string(
       "onboarding.shortcuts.resolve-overlap",
       defaultValue: "Resolve macOS shortcut overlap",
-      comment: "Warning title when system screenshot shortcuts overlap with Snapzy shortcuts"
+      comment: "Warning title when system screenshot shortcuts overlap with LumiCue shortcuts"
     )
   }
 
@@ -348,7 +348,7 @@ struct ShortcutsView: View {
   private var guideStep3Title: String {
     onboardingLocalization.string(
       "onboarding.shortcuts.guide-step-3",
-      defaultValue: "Uncheck the macOS screenshot shortcuts that overlap with the Snapzy shortcuts you want to keep on",
+      defaultValue: "Uncheck the macOS screenshot shortcuts that overlap with the LumiCue shortcuts you want to keep on",
       comment: "Step 3 in onboarding shortcut conflict resolution guide"
     )
   }

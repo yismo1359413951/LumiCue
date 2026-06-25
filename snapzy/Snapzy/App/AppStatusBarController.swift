@@ -218,11 +218,11 @@ final class AppStatusBarController: ObservableObject {
     case .paused:
       return "\(L10n.RecordingToolbar.recordingPaused) (\(recorder.formattedDuration))"
     case .preparing:
-      return "Snapzy"
+      return "LumiCue"
     case .stopping:
-      return "Snapzy"
+      return "LumiCue"
     case .idle:
-      return "Snapzy"
+      return "LumiCue"
     }
   }
 

@@ -317,6 +317,12 @@ private final class ResizeHandleView: NSView {
   }
 }
 
+/// 控制条按钮: 悬浮窗非活动时也能一点就响应(不被系统吃掉第一次点击)。
+@MainActor
+private final class BarButton: NSButton {
+  override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
 // MARK: - 提词器窗口
 
 @MainActor
@@ -380,6 +386,7 @@ final class TeleprompterWindow: NSWindow {
     super.init(contentRect: NSRect(x: 0, y: 0, width: width, height: height),
                styleMask: [.borderless], backing: .buffered, defer: false)
     sharingType = .readOnly
+    appearance = NSAppearance(named: .darkAqua)   // 深色外观: 按钮 .title 白字且能实时更新(⏸↔▶)
     isOpaque = false
     backgroundColor = .clear
     hasShadow = true
@@ -486,11 +493,12 @@ final class TeleprompterWindow: NSWindow {
 
   private func setupControlBar() {
     func mkBtn(_ title: String, _ sel: Selector) -> NSButton {
-      let b = NSButton(title: title, target: self, action: sel)
-      b.isBordered = false; b.contentTintColor = NSColor.white.withAlphaComponent(0.92)
-      b.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+      let b = BarButton(title: title, target: self, action: sel)
+      b.isBordered = false
+      b.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+      // 用普通 .title(深色外观下自动白字), 这样 togglePlay 改 .title 时图标能实时更新
       b.wantsLayer = true
-      b.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.08).cgColor
+      b.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.15).cgColor
       b.layer?.cornerRadius = 8       // 小药丸
       return b
     }

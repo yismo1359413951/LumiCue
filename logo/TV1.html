@@ -1,0 +1,32 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+html,body{margin:0;background:transparent}
+.icon{width:1024px;height:1024px;border-radius:230px;position:relative;overflow:hidden;
+ background:radial-gradient(120% 120% at 50% 20%,#2a1745,#150c28 58%,#0a0614);
+ display:flex;align-items:center;justify-content:center;box-shadow:inset 0 6px 0 rgba(255,255,255,.10)}
+/* 小电视机身 */
+.tv{width:600px;height:430px;border-radius:70px;position:relative;
+ background:linear-gradient(180deg,#3a2563,#241246);
+ box-shadow:0 26px 60px rgba(0,0,0,.5), inset 0 4px 0 rgba(255,255,255,.16);
+ display:flex;align-items:center;justify-content:center}
+/* 屏幕 */
+.screen{width:480px;height:300px;border-radius:44px;background:#0c0718;
+ box-shadow:inset 0 0 50px rgba(168,85,247,.35), 0 0 0 8px rgba(168,85,247,.0);
+ display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px}
+.l{border-radius:20px}
+.d{width:230px;height:24px;background:rgba(255,255,255,.22)}
+.f{width:320px;height:50px;background:linear-gradient(90deg,#a855f7,#d946ef);
+ box-shadow:0 0 45px 8px rgba(168,85,247,.75)}
+.d2{width:170px;height:24px;background:rgba(255,255,255,.16)}
+/* 天线 */
+.ant{position:absolute;top:-78px;left:50%;transform:translateX(-50%);width:200px;height:90px}
+.ant b{position:absolute;bottom:0;left:50%;width:10px;height:90px;border-radius:6px;background:#a855f7;transform-origin:bottom}
+.ant b:first-child{transform:rotate(-28deg)}
+.ant b:last-child{transform:rotate(28deg)}
+.tip{position:absolute;width:26px;height:26px;border-radius:50%;background:#d946ef;box-shadow:0 0 22px #d946ef}
+</style></head><body>
+<div class="icon"><div class="tv">
+  <div class="ant"><b></b><b></b>
+    <span class="tip" style="top:-6px;left:50px"></span><span class="tip" style="top:-6px;right:50px"></span></div>
+  <div class="screen"><div class="l d"></div><div class="l f"></div><div class="l d2"></div></div>
+</div></div>
+</body></html>

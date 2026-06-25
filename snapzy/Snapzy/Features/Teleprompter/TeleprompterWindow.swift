@@ -465,9 +465,9 @@ final class TeleprompterWindow: NSWindow {
     contentView?.addSubview(skyView)
 
     // 3D 文字 — 只焦点行亮, 其余暗(关掉逐字黄高亮, 焦点行稳定清楚不晃)
-    linesView.script = placeholder
     linesView.enableKaraoke = false
     linesView.enableBlur = false        // 不虚化, 上下行保持清楚可读(念稿时一直看得见)
+    linesView.script = normalize(placeholder)   // 占位去空格(与编辑框一致)
     linesView.onLineComplete = { [weak self] in self?.onLineComplete() }
     contentView?.addSubview(linesView)
 
@@ -1022,7 +1022,7 @@ final class TeleprompterWindow: NSWindow {
   @objc private func toggleEdit() {
     editing.toggle()
     if editing {
-      editText.string = linesView.script
+      editText.string = normalize(linesView.script)   // 编辑框也去空格(之前漏了这个面)
       editScroll.isHidden = false; linesView.isHidden = true; fxView.isHidden = true
       rescuePanel.isHidden = true
       makeKeyAndOrderFront(nil); makeFirstResponder(editText)

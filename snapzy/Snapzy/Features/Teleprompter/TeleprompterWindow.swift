@@ -599,10 +599,12 @@ final class TeleprompterWindow: NSWindow {
     trackFill.shadowRadius = 5; trackFill.shadowOpacity = 0.85; trackFill.shadowOffset = .zero
     // 发光彗星头: 进度前端一颗亮点 + 青色柔光, 随时间脉冲(Vibe Island 那种醒目感)
     headDot.backgroundColor = NSColor.white.cgColor
-    headDot.cornerRadius = 5
-    headDot.bounds = CGRect(x: 0, y: 0, width: 10, height: 10)
-    headDot.shadowColor = NSColor(srgbRed: 0.45, green: 0.95, blue: 1, alpha: 1).cgColor
-    headDot.shadowRadius = 8; headDot.shadowOpacity = 0.95; headDot.shadowOffset = .zero
+    headDot.cornerRadius = 7
+    headDot.bounds = CGRect(x: 0, y: 0, width: 14, height: 14)
+    headDot.borderWidth = 2
+    headDot.borderColor = NSColor(srgbRed: 0.5, green: 0.97, blue: 1, alpha: 0.9).cgColor
+    headDot.shadowColor = NSColor(srgbRed: 0.4, green: 0.95, blue: 1, alpha: 1).cgColor
+    headDot.shadowRadius = 12; headDot.shadowOpacity = 1.0; headDot.shadowOffset = .zero
     let s = screenScale
     comboLayer.fontSize = 12; comboLayer.alignmentMode = .left; comboLayer.contentsScale = s
     comboLayer.anchorPoint = CGPoint(x: 0, y: 0.5); comboLayer.bounds = CGRect(x: 0, y: 0, width: 240, height: 18)
@@ -1008,8 +1010,7 @@ final class TeleprompterWindow: NSWindow {
       rescuePanel.isHidden = true
       makeKeyAndOrderFront(nil); makeFirstResponder(editText)
     } else {
-      linesView.script = editText.string
-      linesView.scrollOffset = 0; combo = 0; finished = false; refreshCombo(pulse: false)
+      setLiveScript(editText.string)
       editScroll.isHidden = true; linesView.isHidden = false; fxView.isHidden = false
     }
     editButton.attributedTitle = Self.barTitle(editing ? "完成" : "编辑")
@@ -1035,8 +1036,7 @@ final class TeleprompterWindow: NSWindow {
   override func keyDown(with event: NSEvent) {
     let cmdV = event.modifierFlags.contains(.command) && event.charactersIgnoringModifiers?.lowercased() == "v"
     if cmdV, !editing, let s = NSPasteboard.general.string(forType: .string), !s.isEmpty {
-      linesView.script = s
-      linesView.scrollOffset = 0; combo = 0; finished = false; refreshCombo(pulse: false)
+      setLiveScript(s)   // 去格式 + 当场显示
       return
     }
     if !editing {
@@ -1103,15 +1103,29 @@ final class TeleprompterWindow: NSWindow {
     panel.message = "选一个 .txt 逐字稿文件"
     if panel.runModal() == .OK, let url = panel.url, let text = try? String(contentsOf: url, encoding: .utf8) {
       if editing { toggleEdit() }
-      linesView.script = text
-      linesView.scrollOffset = 0; combo = 0; finished = false; refreshCombo(pulse: false)
+      setLiveScript(text)
     }
   }
 
-  /// 清空: 显示态下清空后直接进编辑态(光标就绪), 你直接 ⌘V 粘新稿。
+  /// 去格式: 删多余空行 + 行首尾空格, 文字紧凑连续, 标点保留。
+  private func normalize(_ s: String) -> String {
+    s.components(separatedBy: .newlines)
+      .map { $0.trimmingCharacters(in: .whitespaces) }
+      .filter { !$0.isEmpty }
+      .joined(separator: "\n")
+  }
+
+  /// 设新稿到显示态(去格式 + 复位)。粘贴/导入/编辑完成统一走这里。
+  private func setLiveScript(_ s: String) {
+    linesView.script = normalize(s)
+    linesView.scrollOffset = 0; combo = 0; finished = false; refreshCombo(pulse: false)
+  }
+
+  /// 清空: 回显示态 + 留一行提示, 你直接 ⌘V 当场就显示(不用点完成)。
   @objc private func clearScript() {
-    if editing { editText.string = "" }
-    else { linesView.script = ""; toggleEdit() }
+    if editing { toggleEdit() }      // 退出编辑态回显示态
+    linesView.script = "⌘V 粘贴你的逐字稿"
+    linesView.scrollOffset = 0; combo = 0; finished = false; refreshCombo(pulse: false)
   }
 
   /// ⏪ 卡壳救急: 回退到上一句重念。

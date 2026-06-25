@@ -350,6 +350,8 @@ final class TeleprompterWindow: NSWindow {
 
   private var playPauseButton: NSButton!
   private var editButton: NSButton!
+  private weak var controlStack: NSStackView?
+  private var didLogBar = false
   private var voiceButton: NSButton!        // 🎤 语音跟随开关
   private let voiceFollower = VoiceFollower()
   private var voiceMode = false
@@ -542,9 +544,16 @@ final class TeleprompterWindow: NSWindow {
       mkBtn("清", #selector(clearScript)), mkBtn("✕", #selector(closePrompter)),
     ])
     stack.orientation = .horizontal; stack.spacing = 3; stack.distribution = .fillEqually
+    // 换方法: 用 Auto Layout 钉死填满容器, 不再用 frame(避免 bounds=0 时算出负尺寸→按钮看不见)
+    stack.translatesAutoresizingMaskIntoConstraints = false
     controlBar.addSubview(stack)
-    stack.frame = controlBar.bounds.insetBy(dx: 5, dy: 3)   // 留内边距, 按钮不贴药丸边
-    stack.autoresizingMask = [.width, .height]
+    NSLayoutConstraint.activate([
+      stack.leadingAnchor.constraint(equalTo: controlBar.leadingAnchor, constant: 5),
+      stack.trailingAnchor.constraint(equalTo: controlBar.trailingAnchor, constant: -5),
+      stack.topAnchor.constraint(equalTo: controlBar.topAnchor, constant: 3),
+      stack.bottomAnchor.constraint(equalTo: controlBar.bottomAnchor, constant: -3),
+    ])
+    controlStack = stack
     contentView?.addSubview(controlBar)
   }
 
@@ -655,6 +664,18 @@ final class TeleprompterWindow: NSWindow {
     let autoFont = max(14, min(80, (w * 0.048 * fontScale).rounded()))   // 字号随框自适应 × 手动倍数
     if abs(linesView.fontSize - autoFont) > 0.5 { linesView.fontSize = autoFont }
     updateJourney()
+
+    if !didLogBar, let st = controlStack {
+      didLogBar = true
+      DispatchQueue.main.async { [weak self] in
+        guard let self else { return }
+        let btns = st.arrangedSubviews
+        let f0 = btns.first?.frame ?? .zero
+        NSLog("CTRLBAR_CHECK bar=%@ stack=%@ btnCount=%d firstBtn=%@ winW=%.0f",
+              NSStringFromRect(self.controlBar.frame), NSStringFromRect(st.frame),
+              btns.count, NSStringFromRect(f0), self.frame.width)
+      }
+    }
   }
 
   func show() {

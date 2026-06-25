@@ -355,7 +355,6 @@ final class TeleprompterWindow: NSWindow {
   private var collapsed = false
   private var expandedFrame = NSRect.zero
   private let pillView = NSView()
-  private let pillLabel = NSTextField(labelWithString: "")
   private var pillPlay: NSButton!
   private var pillExpand: NSButton!
   private let pillTrack = CALayer()
@@ -655,12 +654,7 @@ final class TeleprompterWindow: NSWindow {
     pillExpand.attributedTitle = Self.barTitle("⤢")
     pillExpand.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.15).cgColor
     pillExpand.layer?.cornerRadius = 9
-    pillLabel.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
-    pillLabel.textColor = .white
-    pillLabel.lineBreakMode = .byTruncatingTail
-    pillLabel.maximumNumberOfLines = 1
-    pillLabel.alignment = .center
-    pillLabel.isBezeled = false; pillLabel.drawsBackground = false; pillLabel.isEditable = false
+    // 收起态: 复用 linesView 显示 2-3 行小字, pillView 只放 左播放/右展开/底进度 的薄控件
     pillTrack.backgroundColor = NSColor.white.withAlphaComponent(0.14).cgColor
     pillTrack.cornerRadius = 1.5
     pillFill.colors = [NSColor.systemTeal.cgColor,
@@ -670,7 +664,6 @@ final class TeleprompterWindow: NSWindow {
     pillView.layer?.addSublayer(pillTrack)
     pillView.layer?.addSublayer(pillFill)
     pillView.addSubview(pillPlay)
-    pillView.addSubview(pillLabel)
     pillView.addSubview(pillExpand)
     contentView?.addSubview(pillView)
   }
@@ -681,7 +674,8 @@ final class TeleprompterWindow: NSWindow {
     if collapsed {
       expandedFrame = frame
       setCollapsedVisibility(true)
-      let pw = min(expandedFrame.width, 340), ph: CGFloat = 50
+      // 很宽很矮的横条: 2-3 行小字, 不占地方, 可拖到镜头下面
+      let pw = min(max(expandedFrame.width, 520), 700), ph: CGFloat = 100
       animateFrame(to: NSRect(x: frame.midX - pw / 2, y: frame.maxY - ph, width: pw, height: ph))
     } else {
       setCollapsedVisibility(false)
@@ -689,10 +683,10 @@ final class TeleprompterWindow: NSWindow {
     }
   }
 
-  /// true=显示胶囊隐藏大框; false=反之。边框始终在。
+  /// 收起态: 复用 linesView 显示2-3行小字, 只隐藏大控制条等。边框始终在。
   private func setCollapsedVisibility(_ c: Bool) {
     pillView.isHidden = !c
-    linesView.isHidden = c
+    linesView.isHidden = false        // 收起态仍显示文字(小字2-3行)
     controlBar.isHidden = c
     journeyBar.isHidden = c
     fxView.isHidden = c
@@ -738,15 +732,22 @@ final class TeleprompterWindow: NSWindow {
     borderMask.path = CGPath(roundedRect: cv.bounds.insetBy(dx: 1, dy: 1),
                              cornerWidth: 25, cornerHeight: 25, transform: nil)
 
-    // 收起态胶囊布局: 左播放 · 中当前句 · 右展开 · 底进度
-    pillView.frame = cv.bounds
-    let pad: CGFloat = 8, pb: CGFloat = 34
-    pillPlay.frame = NSRect(x: pad, y: (h - pb) / 2, width: pb, height: pb)
-    pillExpand.frame = NSRect(x: w - pad - pb, y: (h - pb) / 2, width: pb, height: pb)
-    let lx = pad + pb + 6, lw = max(20, w - 2 * (pad + pb + 6))
-    pillLabel.frame = NSRect(x: lx, y: (h - 22) / 2 + 3, width: lw, height: 22)
-    pillTrack.frame = CGRect(x: lx, y: 7, width: lw, height: 3)
+    // ===== 收起态: 很宽很矮的横条, 复用 linesView 显示 2-3 行小字 =====
+    if collapsed {
+      let cb: CGFloat = 30
+      pillView.frame = cv.bounds
+      pillPlay.frame = NSRect(x: 8, y: (h - cb) / 2, width: cb, height: cb)
+      pillExpand.frame = NSRect(x: w - 8 - cb, y: (h - cb) / 2, width: cb, height: cb)
+      let lx = 8 + cb + 8, lw = max(20, w - 2 * (8 + cb + 8))
+      pillTrack.frame = CGRect(x: lx, y: 6, width: lw, height: 3)
+      linesView.frame = NSRect(x: lx, y: 11, width: lw, height: h - 15)
+      let cf: CGFloat = 18                                   // 收起态固定小字(不随宽度变大)
+      if abs(linesView.fontSize - cf) > 0.5 { linesView.fontSize = cf }
+      updateJourney()
+      return
+    }
 
+    // ===== 念稿态(大框) =====
     controlBar.frame = NSRect(x: w - barW - 8, y: h - barH - 8, width: barW, height: barH)
 
     journeyBar.frame = NSRect(x: 0, y: 2, width: w, height: journeyH)
@@ -808,8 +809,7 @@ final class TeleprompterWindow: NSWindow {
     let t = trackLayer.frame
     CATransaction.begin(); CATransaction.setDisableActions(true)
     trackFill.frame = CGRect(x: t.minX, y: t.minY, width: max(0.1, t.width * p), height: t.height)
-    if collapsed {                              // 收起态: 胶囊上显示当前句 + 进度
-      pillLabel.stringValue = linesView.textOfLine(linesView.currentLineIndex)
+    if collapsed {                              // 收起态: 底部进度
       let pt = pillTrack.frame
       pillFill.frame = CGRect(x: pt.minX, y: pt.minY, width: max(0.1, pt.width * p), height: pt.height)
     }

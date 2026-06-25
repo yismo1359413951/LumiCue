@@ -331,6 +331,9 @@ final class TeleprompterWindow: NSWindow {
   private var resizeStartFrame = NSRect.zero
   private var resizeStartMouse = NSPoint.zero
   private let effectView = NSVisualEffectView()
+  private let borderView = FXView()                 // 彩色流光描边(最上层, 鼠标穿透)
+  private let borderGradient = CAGradientLayer()
+  private let borderMask = CAShapeLayer()
   private let skyView = NSView()                    // 天色(随进度 白天→黄昏→星空)
   private let skyGradient = CAGradientLayer()
   private let linesView = LinesView()
@@ -393,21 +396,20 @@ final class TeleprompterWindow: NSWindow {
     isMovableByWindowBackground = true
 
     contentView?.wantsLayer = true
-    contentView?.layer?.cornerRadius = 24          // 灵动岛: 大圆角药丸
-    contentView?.layer?.masksToBounds = true
-    contentView?.layer?.borderWidth = 1            // 精致细描边
-    contentView?.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
+    contentView?.layer?.cornerRadius = 26          // 灵动岛: 大圆角药丸
+    contentView?.layer?.masksToBounds = true       // 彩色流光描边由 borderView 叠在最上层
 
-    // 毛玻璃(最底) — 深邃黑玻璃
-    effectView.material = .hudWindow
+    // 毛玻璃(最底) — 半透明, 背后内容隐约透出, 不挡死视野
+    effectView.material = .underWindowBackground
     effectView.blendingMode = .behindWindow
     effectView.state = .active
     effectView.wantsLayer = true
+    effectView.alphaValue = 0.55                    // 半透明: 录屏其他内容能透出来
     contentView?.addSubview(effectView)
 
-    // 黑玻璃叠层: 压暗成灵动岛那种深邃黑(在毛玻璃之上、天色之下)
+    // 半透明深色叠层(灵动岛黑玻璃感, 但够透能看到背后)
     let darkLayer = NSView(); darkLayer.wantsLayer = true
-    darkLayer.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.42).cgColor
+    darkLayer.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.30).cgColor
     darkLayer.autoresizingMask = [.width, .height]
     darkLayer.frame = contentView?.bounds ?? .zero
     contentView?.addSubview(darkLayer)
@@ -419,8 +421,9 @@ final class TeleprompterWindow: NSWindow {
     skyView.layer?.addSublayer(skyGradient)
     contentView?.addSubview(skyView)
 
-    // 3D 文字
+    // 3D 文字 — 只焦点行亮, 其余暗(关掉逐字黄高亮, 焦点行稳定清楚不晃)
     linesView.script = placeholder
+    linesView.enableKaraoke = false
     linesView.onLineComplete = { [weak self] in self?.onLineComplete() }
     contentView?.addSubview(linesView)
 
@@ -447,7 +450,8 @@ final class TeleprompterWindow: NSWindow {
     setupControlBar()
     setupJourney()
     setupRescue()
-    contentView?.addSubview(resizeHandle)   // 右下角拖拽手柄(最上层)
+    contentView?.addSubview(resizeHandle)   // 右下角拖拽手柄
+    setupColoredBorder()                     // 彩色流光描边(最上层叠加, 不挡点击)
     layoutContents()
     startScrolling()
   }
@@ -503,34 +507,41 @@ final class TeleprompterWindow: NSWindow {
 
   // MARK: - 控制条
 
+  /// 强制白字, 保证按钮文字一定可见(治反复"控制条看不见")。
+  private static func barTitle(_ s: String) -> NSAttributedString {
+    NSAttributedString(string: s, attributes: [
+      .foregroundColor: NSColor.white,
+      .font: NSFont.systemFont(ofSize: 12, weight: .semibold)])
+  }
+
   private func setupControlBar() {
     func mkBtn(_ title: String, _ sel: Selector) -> NSButton {
       let b = BarButton(title: title, target: self, action: sel)
       b.isBordered = false
-      b.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
-      // 用普通 .title(深色外观下自动白字), 这样 togglePlay 改 .title 时图标能实时更新
       b.wantsLayer = true
       b.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.15).cgColor
       b.layer?.cornerRadius = 8       // 小药丸
+      b.attributedTitle = Self.barTitle(title)   // 显式白字, 切换时也更新 attributedTitle
       return b
     }
-    // 控制条整体: 深色药丸容器(灵动岛模块感)
+    // 控制条整体: 深色药丸容器(灵动岛模块感), 固定右上角
     controlBar.wantsLayer = true
-    controlBar.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.32).cgColor
-    controlBar.layer?.cornerRadius = 13
+    controlBar.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.50).cgColor
+    controlBar.layer?.cornerRadius = 14
     controlBar.layer?.borderWidth = 0.5
-    controlBar.layer?.borderColor = NSColor.white.withAlphaComponent(0.14).cgColor
+    controlBar.layer?.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
     playPauseButton = mkBtn("⏸", #selector(togglePlay))
     editButton = mkBtn("编辑", #selector(toggleEdit))
     voiceButton = mkBtn("🎤", #selector(toggleVoice))
+    // 全部控制堆右上: 回退·暂停·编辑·框小中大·字号·字体·字色·清·关闭
     let stack = NSStackView(views: [
       mkBtn("⏪", #selector(stepBack)), playPauseButton, editButton,
-      mkBtn("慢", #selector(speedDown)), mkBtn("快", #selector(speedUp)),
+      mkBtn("小", #selector(sizeSmall)), mkBtn("中", #selector(sizeMedium)), mkBtn("大", #selector(sizeLarge)),
       mkBtn("A-", #selector(fontDown)), mkBtn("A+", #selector(fontUp)),
       mkBtn("字体", #selector(pickFont)), mkBtn("字色", #selector(pickColor)),
       mkBtn("清", #selector(clearScript)), mkBtn("✕", #selector(closePrompter)),
     ])
-    stack.orientation = .horizontal; stack.spacing = 4; stack.distribution = .fillEqually
+    stack.orientation = .horizontal; stack.spacing = 3; stack.distribution = .fillEqually
     controlBar.addSubview(stack)
     stack.frame = controlBar.bounds.insetBy(dx: 5, dy: 3)   // 留内边距, 按钮不贴药丸边
     stack.autoresizingMask = [.width, .height]
@@ -587,17 +598,45 @@ final class TeleprompterWindow: NSWindow {
     contentView?.addSubview(rescuePanel)
   }
 
+  /// 6号: 彩色流光描边(青→紫→粉缓慢流动)。borderView 鼠标穿透, 永远在最上层。
+  private func setupColoredBorder() {
+    borderView.wantsLayer = true
+    borderGradient.colors = [
+      NSColor.systemTeal.cgColor,
+      NSColor(srgbRed: 0.66, green: 0.55, blue: 0.98, alpha: 1).cgColor,
+      NSColor.systemPink.cgColor,
+      NSColor.systemTeal.cgColor]
+    borderGradient.locations = [0, 0.4, 0.7, 1]
+    borderGradient.startPoint = CGPoint(x: 0, y: 0)
+    borderGradient.endPoint = CGPoint(x: 1, y: 1)
+    borderMask.fillColor = NSColor.clear.cgColor
+    borderMask.strokeColor = NSColor.black.cgColor
+    borderMask.lineWidth = 2
+    borderGradient.mask = borderMask
+    borderView.layer?.addSublayer(borderGradient)
+    contentView?.addSubview(borderView)
+    let a = CABasicAnimation(keyPath: "locations")
+    a.fromValue = [-0.3, 0.1, 0.4, 0.7]; a.toValue = [0.3, 0.7, 1.0, 1.3]
+    a.duration = 6; a.repeatCount = .infinity
+    borderGradient.add(a, forKey: "flow")
+  }
+
   private var screenScale: CGFloat { screen?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2 }
 
   private func layoutContents() {
     guard let cv = contentView else { return }
     let w = cv.bounds.width, h = cv.bounds.height
-    let barH: CGFloat = 28, barW: CGFloat = 412, journeyH: CGFloat = 30
+    let barH: CGFloat = 30, barW: CGFloat = min(w - 16, 470), journeyH: CGFloat = 30
     effectView.frame = cv.bounds
     skyView.frame = cv.bounds
     skyGradient.frame = cv.bounds
     fxView.frame = cv.bounds
-    controlBar.frame = NSRect(x: w - barW - 6, y: h - barH - 6, width: barW, height: barH)
+    borderView.frame = cv.bounds
+    borderGradient.frame = cv.bounds
+    borderMask.frame = cv.bounds
+    borderMask.path = CGPath(roundedRect: cv.bounds.insetBy(dx: 1, dy: 1),
+                             cornerWidth: 25, cornerHeight: 25, transform: nil)
+    controlBar.frame = NSRect(x: w - barW - 8, y: h - barH - 8, width: barW, height: barH)
 
     journeyBar.frame = NSRect(x: 0, y: 2, width: w, height: journeyH)
     let trackY: CGFloat = 13, trackH: CGFloat = 4
@@ -773,7 +812,7 @@ final class TeleprompterWindow: NSWindow {
 
   @objc private func togglePlay() {
     playing.toggle()
-    playPauseButton.title = playing ? "⏸" : "▶"
+    playPauseButton.attributedTitle = Self.barTitle(playing ? "⏸" : "▶")
     rescuePanel.isHidden = playing || editing                            // 暂停=出救场面板
     if !playing { retreatCount = 0; retreatButton.title = "← 退1句" }
   }
@@ -790,7 +829,7 @@ final class TeleprompterWindow: NSWindow {
       linesView.scrollOffset = 0; combo = 0; finished = false; refreshCombo(pulse: false)
       editScroll.isHidden = true; linesView.isHidden = false; fxView.isHidden = false
     }
-    editButton.title = editing ? "完成" : "编辑"
+    editButton.attributedTitle = Self.barTitle(editing ? "完成" : "编辑")
   }
 
   @objc private func sizeSmall() { resize(to: 520) }

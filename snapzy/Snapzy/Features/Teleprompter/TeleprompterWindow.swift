@@ -667,21 +667,35 @@ final class TeleprompterWindow: NSWindow {
   当前这行最大最亮，跟着滚动念就行
   """
 
-  /// 字色可选项(深色背景上清晰的高对比色), 控制条「字色」钮和右键菜单共用一份。
+  /// 字色可选项 — Tailwind(开源设计系统)柔和配色, 深色背景念稿清晰且耐看, 不刺眼。
+  /// 控制条「字色」钮和右键菜单共用一份, 每项带色块预览。
   static let textColorChoices: [(String, NSColor)] = [
-    ("White 白", .white),
-    ("Yellow 黄", .systemYellow),
-    ("Gold 金", NSColor(srgbRed: 1.0, green: 0.84, blue: 0.10, alpha: 1)),
-    ("Orange 橙", .systemOrange),
-    ("Red 红", .systemRed),
-    ("Pink 粉", .systemPink),
-    ("Magenta 品红", NSColor(srgbRed: 1.0, green: 0.25, blue: 0.80, alpha: 1)),
-    ("Purple 紫", .systemPurple),
-    ("Blue 蓝", .systemBlue),
-    ("Cyan 青", .systemTeal),
-    ("Mint 薄荷", NSColor(srgbRed: 0.40, green: 0.95, blue: 0.75, alpha: 1)),
-    ("Green 绿", .systemGreen),
+    ("白",     NSColor.white),
+    ("琥珀",   NSColor(srgbRed: 0.988, green: 0.827, blue: 0.302, alpha: 1)),
+    ("橙",     NSColor(srgbRed: 0.992, green: 0.729, blue: 0.455, alpha: 1)),
+    ("珊瑚",   NSColor(srgbRed: 0.988, green: 0.647, blue: 0.647, alpha: 1)),
+    ("粉",     NSColor(srgbRed: 0.976, green: 0.659, blue: 0.831, alpha: 1)),
+    ("薰衣草", NSColor(srgbRed: 0.769, green: 0.710, blue: 0.992, alpha: 1)),
+    ("靛蓝",   NSColor(srgbRed: 0.647, green: 0.706, blue: 0.988, alpha: 1)),
+    ("天蓝",   NSColor(srgbRed: 0.576, green: 0.773, blue: 0.992, alpha: 1)),
+    ("青",     NSColor(srgbRed: 0.404, green: 0.910, blue: 0.976, alpha: 1)),
+    ("薄荷",   NSColor(srgbRed: 0.431, green: 0.906, blue: 0.718, alpha: 1)),
+    ("柠绿",   NSColor(srgbRed: 0.745, green: 0.949, blue: 0.392, alpha: 1)),
+    ("米白",   NSColor(srgbRed: 0.996, green: 0.976, blue: 0.765, alpha: 1)),
   ]
+
+  /// 给菜单项画一个圆角色块预览图。
+  static func colorSwatch(_ c: NSColor, size: CGFloat = 16) -> NSImage {
+    let img = NSImage(size: NSSize(width: size, height: size))
+    img.lockFocus()
+    c.setFill()
+    NSBezierPath(roundedRect: NSRect(x: 1, y: 1, width: size - 2, height: size - 2), xRadius: 4, yRadius: 4).fill()
+    NSColor.white.withAlphaComponent(0.35).setStroke()
+    let p = NSBezierPath(roundedRect: NSRect(x: 1, y: 1, width: size - 2, height: size - 2), xRadius: 4, yRadius: 4)
+    p.lineWidth = 0.5; p.stroke()
+    img.unlockFocus()
+    return img
+  }
 
   var hiddenFromCapture: Bool = false {
     didSet { sharingType = hiddenFromCapture ? .none : .readOnly }
@@ -799,6 +813,7 @@ final class TeleprompterWindow: NSWindow {
       let i = NSMenuItem(title: t, action: #selector(setTextColor(_:)), keyEquivalent: "")
       i.target = self; i.representedObject = c
       i.state = (c == cur) ? .on : .off
+      i.image = Self.colorSwatch(c)
       menu.addItem(i)
     }
     if let v = contentView { menu.popUp(positioning: nil, at: NSPoint(x: v.bounds.midX, y: v.bounds.midY), in: v) }
@@ -1373,6 +1388,7 @@ final class TeleprompterWindow: NSWindow {
       let i = NSMenuItem(title: t, action: #selector(setTextColor(_:)), keyEquivalent: "")
       i.target = self; i.representedObject = c
       i.state = (c == curColor) ? .on : .off
+      i.image = Self.colorSwatch(c)
       colorSub.addItem(i)
     }
     let ci = NSMenuItem(title: "Color 字色", action: nil, keyEquivalent: "")

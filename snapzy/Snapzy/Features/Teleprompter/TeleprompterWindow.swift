@@ -568,6 +568,8 @@ private final class ResizeHandleView: NSView {
 /// 控制条按钮: 悬浮窗非活动时也能一点就响应(不被系统吃掉第一次点击)。
 @MainActor
 private final class BarButton: NSButton {
+  var zhTitle = ""      // 中文文案
+  var enTitle = ""      // 英文文案
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
@@ -653,6 +655,10 @@ final class TeleprompterWindow: NSWindow {
   private var playing = true
   private var editing = false
   private var didRunLaunchClipboardProbe = false
+  private var isEnglish = false           // 界面语言: false=中文 / true=英文, 默认中文
+  private var langButton: NSButton!       // 「EN ⇄ 中」语言切换钮
+  private var rescueRestartBtn: NSButton! // 救场面板: 重念这句
+  private var rescueResumeBtn: NSButton!  // 救场面板: 继续
 
   // 游戏状态
   private var combo = 0
@@ -839,13 +845,14 @@ final class TeleprompterWindow: NSWindow {
   }
 
   private func setupControlBar() {
-    func mkBtn(_ title: String, _ sel: Selector) -> NSButton {
-      let b = BarButton(title: title, target: self, action: sel)
+    func mkBtn(_ zh: String, _ en: String, _ sel: Selector) -> NSButton {
+      let b = BarButton(title: zh, target: self, action: sel)
       b.isBordered = false
       b.wantsLayer = true
       b.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.15).cgColor
       b.layer?.cornerRadius = 8       // 小药丸
-      b.attributedTitle = Self.barTitle(title)   // 显式白字, 切换时也更新 attributedTitle
+      b.zhTitle = zh; b.enTitle = en
+      b.attributedTitle = Self.barTitle(isEnglish ? en : zh)
       return b
     }
     // 控制条整体: 深色药丸容器(灵动岛模块感), 固定右上角
@@ -854,18 +861,19 @@ final class TeleprompterWindow: NSWindow {
     controlBar.layer?.cornerRadius = 14
     controlBar.layer?.borderWidth = 0.5
     controlBar.layer?.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
-    playPauseButton = mkBtn("⏸", #selector(togglePlay))
-    editButton = mkBtn("编辑", #selector(toggleEdit))
-    voiceButton = mkBtn("🎤", #selector(toggleVoice))
-    // 全部控制堆右上: 回退·暂停·编辑·框小中大·字号·字体·字色·清·关闭
+    playPauseButton = mkBtn("⏸", "⏸", #selector(togglePlay))
+    editButton = mkBtn("编辑", "Edit", #selector(toggleEdit))
+    voiceButton = mkBtn("🎤", "🎤", #selector(toggleVoice))
+    langButton = mkBtn("EN", "中", #selector(toggleLang))   // 中文界面显示"EN"(点切英文), 反之"中"
+    // 全部控制堆右上: 回退·暂停·编辑·语言·框小中大·字号·字体·字色·清·关闭
     let stack = NSStackView(views: [
-      mkBtn("⏪", #selector(stepBack)), playPauseButton, editButton,
-      mkBtn("慢", #selector(speedDown)), mkBtn("快", #selector(speedUp)),
-      mkBtn("小", #selector(sizeSmall)), mkBtn("中", #selector(sizeMedium)), mkBtn("大", #selector(sizeLarge)),
-      mkBtn("A-", #selector(fontDown)), mkBtn("A+", #selector(fontUp)),
-      mkBtn("字体", #selector(pickFont)), mkBtn("字色", #selector(pickColor)),
-      mkBtn("清", #selector(clearScript)), mkBtn("收起", #selector(toggleCollapse)),
-      mkBtn("✕", #selector(closePrompter)),
+      mkBtn("⏪", "⏪", #selector(stepBack)), playPauseButton, editButton, langButton,
+      mkBtn("慢", "Slow", #selector(speedDown)), mkBtn("快", "Fast", #selector(speedUp)),
+      mkBtn("小", "S", #selector(sizeSmall)), mkBtn("中", "M", #selector(sizeMedium)), mkBtn("大", "L", #selector(sizeLarge)),
+      mkBtn("A-", "A-", #selector(fontDown)), mkBtn("A+", "A+", #selector(fontUp)),
+      mkBtn("字体", "Font", #selector(pickFont)), mkBtn("字色", "Color", #selector(pickColor)),
+      mkBtn("清", "Clear", #selector(clearScript)), mkBtn("收起", "Hide", #selector(toggleCollapse)),
+      mkBtn("✕", "✕", #selector(closePrompter)),
     ])
     stack.orientation = .horizontal; stack.spacing = 3; stack.distribution = .fillEqually
     // 换方法: 用 Auto Layout 钉死填满容器, 不再用 frame(避免 bounds=0 时算出负尺寸→按钮看不见)
@@ -878,6 +886,37 @@ final class TeleprompterWindow: NSWindow {
       stack.bottomAnchor.constraint(equalTo: controlBar.bottomAnchor, constant: -3),
     ])
     contentView?.addSubview(controlBar)
+  }
+
+  // MARK: - 中英文界面切换
+
+  @objc private func toggleLang() {
+    isEnglish.toggle()
+    applyLang(in: controlBar)
+    applyLang(in: pillBar)
+    refreshDynamicTitles()
+  }
+
+  /// 递归把容器内所有 BarButton 切到当前语言(静态文案按钮)。
+  private func applyLang(in view: NSView?) {
+    guard let view else { return }
+    for sub in view.subviews {
+      if let b = sub as? BarButton {
+        b.attributedTitle = Self.barTitle(isEnglish ? b.enTitle : b.zhTitle)
+      }
+      applyLang(in: sub)
+    }
+  }
+
+  /// 动态文案按钮(随状态变, 不能用静态 zh/en): 编辑↔完成、退N句、救场面板。
+  private func refreshDynamicTitles() {
+    editButton.attributedTitle = Self.barTitle(
+      editing ? (isEnglish ? "Done" : "✓完成") : (isEnglish ? "Edit" : "编辑"))
+    retreatButton.title = isEnglish
+      ? (retreatCount > 0 ? "← Back \(retreatCount)" : "← Back")
+      : (retreatCount > 0 ? "← 退\(retreatCount)句" : "← 退1句")
+    rescueRestartBtn.title = isEnglish ? "↺ Restart" : "↺ 重念这句"
+    rescueResumeBtn.title = isEnglish ? "▶ Resume" : "▶ 继续"
   }
 
   // MARK: - 底部光之路 + 精灵 + 连击
@@ -941,10 +980,12 @@ final class TeleprompterWindow: NSWindow {
       return b
     }
     retreatButton = mk("← 退1句", #selector(rescueRetreat))
+    rescueRestartBtn = mk("↺ 重念这句", #selector(rescueRestart))
+    rescueResumeBtn = mk("▶ 继续", #selector(rescueResume))
     rescueStack = NSStackView(views: [
-      mk("↺ 重念这句", #selector(rescueRestart)),
+      rescueRestartBtn,
       retreatButton,
-      mk("▶ 继续", #selector(rescueResume)),
+      rescueResumeBtn,
     ])
     rescueStack.orientation = .horizontal; rescueStack.spacing = 8; rescueStack.distribution = .fillEqually
     rescuePanel.addSubview(rescueStack)
@@ -977,12 +1018,13 @@ final class TeleprompterWindow: NSWindow {
   // MARK: - 灵动岛 收起/展开 胶囊
 
   /// 通用控制按钮(白字小药丸), 大框/胶囊共用。
-  private func makeBarButton(_ title: String, _ sel: Selector) -> NSButton {
-    let b = BarButton(title: title, target: self, action: sel)
+  private func makeBarButton(_ zh: String, _ en: String, _ sel: Selector) -> NSButton {
+    let b = BarButton(title: zh, target: self, action: sel)
     b.isBordered = false; b.wantsLayer = true
     b.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.15).cgColor
     b.layer?.cornerRadius = 8
-    b.attributedTitle = Self.barTitle(title)
+    b.zhTitle = zh; b.enTitle = en
+    b.attributedTitle = Self.barTitle(isEnglish ? en : zh)
     return b
   }
 
@@ -995,11 +1037,11 @@ final class TeleprompterWindow: NSWindow {
     pillBar.layer?.cornerRadius = 13
     pillBar.layer?.borderWidth = 0.5
     pillBar.layer?.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
-    pillPlay = makeBarButton("⏸", #selector(togglePlay))
-    pillExpand = makeBarButton("⤢", #selector(toggleCollapse))
+    pillPlay = makeBarButton("⏸", "⏸", #selector(togglePlay))
+    pillExpand = makeBarButton("⤢", "⤢", #selector(toggleCollapse))
     let st = NSStackView(views: [
-      makeBarButton("⏪", #selector(stepBack)), pillPlay,
-      makeBarButton("慢", #selector(speedDown)), makeBarButton("快", #selector(speedUp)),
+      makeBarButton("⏪", "⏪", #selector(stepBack)), pillPlay,
+      makeBarButton("慢", "Slow", #selector(speedDown)), makeBarButton("快", "Fast", #selector(speedUp)),
       pillExpand,
     ])
     st.orientation = .horizontal; st.spacing = 3; st.distribution = .fillEqually
@@ -1304,7 +1346,7 @@ final class TeleprompterWindow: NSWindow {
     pillPlay?.attributedTitle = Self.barTitle(playing ? "⏸" : "▶")
     rescuePanel.isHidden = playing || editing   // 暂停就弹救场面板(收起态也一致)
     raiseRescueIfVisible()
-    if !playing { retreatCount = 0; retreatButton.title = "← 退1句" }
+    if !playing { retreatCount = 0; retreatButton.title = isEnglish ? "← Back" : "← 退1句" }
   }
 
   /// 救场面板显示时提到最上层(否则收起态 pillView 覆盖在上面, 会拦掉三个按钮的点击)。
@@ -1324,7 +1366,7 @@ final class TeleprompterWindow: NSWindow {
       setLiveScript(editText.string)
       editScroll.isHidden = true; linesView.isHidden = false; fxView.isHidden = false
     }
-    editButton.attributedTitle = Self.barTitle(editing ? "✓完成" : "编辑")
+    editButton.attributedTitle = Self.barTitle(editing ? (isEnglish ? "Done" : "✓完成") : (isEnglish ? "Edit" : "编辑"))
     editButton.layer?.backgroundColor = (editing ? NSColor(srgbRed: 0.66, green: 0.33, blue: 0.97, alpha: 0.8)
                                                   : NSColor.white.withAlphaComponent(0.15)).cgColor
   }
@@ -1485,7 +1527,7 @@ final class TeleprompterWindow: NSWindow {
   @objc private func rescueRetreat() {
     retreatCount += 1
     linesView.stepLine(-1); linesView.updateDepth(); updateJourney()
-    retreatButton.title = "← 退\(retreatCount)句"
+    retreatButton.title = isEnglish ? "← Back \(retreatCount)" : "← 退\(retreatCount)句"
   }
   @objc private func rescueResume() { if !playing { togglePlay() } }
 

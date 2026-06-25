@@ -573,6 +573,22 @@ private final class BarButton: NSButton {
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
+/// 底部进度条: 点/拖任意位置 → 字幕跳到对应进度(像拖视频进度条定位)。
+@MainActor
+private final class SeekBarView: NSView {
+  var onSeek: ((CGFloat) -> Void)?     // 回调进度 0...1
+  private let hPad: CGFloat = 18       // 与 trackLayer 左右留白一致
+  override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+  override func mouseDown(with e: NSEvent) { seek(e) }
+  override func mouseDragged(with e: NSEvent) { seek(e) }
+  override func resetCursorRects() { addCursorRect(bounds, cursor: .pointingHand) }
+  private func seek(_ e: NSEvent) {
+    let x = convert(e.locationInWindow, from: nil).x
+    let p = max(0, min(1, (x - hPad) / max(1, bounds.width - hPad * 2)))
+    onSeek?(p)
+  }
+}
+
 /// 编辑框: "无格式粘贴"总闸 — 不管打字/粘贴(任何格式)/拖拽/输入法, 文字一进来就删空格、
 /// 保留换行和标点。一道闸堵死所有入口, 不再逐条 override 各种粘贴。
 @MainActor
@@ -621,7 +637,7 @@ final class TeleprompterWindow: NSWindow {
   private let controlBar = NSView()
 
   // 底部"光之路"+精灵+连击
-  private let journeyBar = NSView()
+  private let journeyBar = SeekBarView()    // 底部进度条(可拖动定位字幕)
   private let trackLayer = CALayer()
   private let trackFill = CAGradientLayer()         // 发光进度填充(青→紫)
   private let headDot = CALayer()                   // 发光彗星头(进度亮点 + 脉冲)
@@ -953,6 +969,13 @@ final class TeleprompterWindow: NSWindow {
     journeyBar.layer?.addSublayer(headDot)
     journeyBar.layer?.addSublayer(comboLayer)
     contentView?.addSubview(journeyBar)
+    // 拖动进度条 → 字幕跳到对应进度位置
+    journeyBar.onSeek = { [weak self] p in
+      guard let self else { return }
+      self.linesView.scrollOffset = p * self.linesView.resetAt
+      self.linesView.updateDepth()
+      self.updateJourney()
+    }
     updateSpeedLabel()
   }
 

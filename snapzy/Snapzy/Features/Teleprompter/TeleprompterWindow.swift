@@ -88,6 +88,133 @@ private enum TeleprompterScriptSanitizer {
   }
 }
 
+enum TeleprompterDisplayTextComposer {
+  static func displayLines(
+    from script: String,
+    wrapWidth: CGFloat,
+    font: NSFont,
+    paragraphStyle: NSParagraphStyle
+  ) -> [String] {
+    guard wrapWidth > 1 else { return [] }
+    return script.components(separatedBy: "\n").flatMap { rawLine in
+      let compact = TeleprompterScriptSanitizer.compactLine(rawLine)
+      guard !compact.isEmpty else { return [String]() }
+      return wrapLine(compact, wrapWidth: wrapWidth, font: font, paragraphStyle: paragraphStyle)
+    }
+  }
+
+  static func attributedLine(
+    for line: String,
+    font: NSFont,
+    paragraphStyle: NSParagraphStyle,
+    color: NSColor
+  ) -> NSAttributedString {
+    let baseAttrs: [NSAttributedString.Key: Any] = [
+      .font: font,
+      .paragraphStyle: paragraphStyle,
+      .foregroundColor: color,
+    ]
+    let chars = Array(line)
+    let attributed = NSMutableAttributedString(string: line, attributes: baseAttrs)
+    var utf16Location = 0
+
+    for index in chars.indices {
+      let char = chars[index]
+      let next = chars.index(after: index) < chars.endIndex ? chars[chars.index(after: index)] : nil
+      let range = NSRange(location: utf16Location, length: String(char).utf16.count)
+      let kern = kern(after: char, next: next, fontSize: font.pointSize)
+      if kern != 0 { attributed.addAttribute(.kern, value: kern, range: range) }
+      utf16Location += range.length
+    }
+
+    return attributed
+  }
+
+  private static func wrapLine(
+    _ line: String,
+    wrapWidth: CGFloat,
+    font: NSFont,
+    paragraphStyle: NSParagraphStyle
+  ) -> [String] {
+    let characters = Array(line)
+    guard !characters.isEmpty else { return [] }
+
+    var lines: [String] = []
+    var current = ""
+
+    for character in characters {
+      let next = current + String(character)
+      if current.isEmpty || measuredWidth(of: next, font: font, paragraphStyle: paragraphStyle) <= wrapWidth {
+        current = next
+      } else {
+        lines.append(current)
+        current = String(character)
+      }
+    }
+
+    if !current.isEmpty { lines.append(current) }
+    return lines
+  }
+
+  private static func measuredWidth(
+    of line: String,
+    font: NSFont,
+    paragraphStyle: NSParagraphStyle
+  ) -> CGFloat {
+    let attributed = attributedLine(for: line, font: font, paragraphStyle: paragraphStyle, color: .white)
+    let rect = attributed.boundingRect(
+      with: NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude),
+      options: [.usesLineFragmentOrigin, .usesFontLeading],
+      context: nil
+    )
+    return ceil(rect.width)
+  }
+
+  private static func kern(after char: Character, next: Character?, fontSize: CGFloat) -> CGFloat {
+    guard let next else { return 0 }
+
+    let charIsCJK = isCJK(char)
+    let nextIsCJK = isCJK(next)
+    let charIsASCII = isASCIIish(char)
+    let nextIsASCII = isASCIIish(next)
+
+    if charIsCJK && nextIsCJK {
+      return -max(1.8, fontSize * 0.12)
+    }
+    if (charIsCJK && nextIsASCII) || (charIsASCII && nextIsCJK) {
+      return -max(2.4, fontSize * 0.18)
+    }
+    if charIsASCII && nextIsASCII {
+      return -max(0.8, fontSize * 0.06)
+    }
+    if isTightPunctuation(char) || isTightPunctuation(next) {
+      return -max(1.6, fontSize * 0.10)
+    }
+    return 0
+  }
+
+  private static func isASCIIish(_ char: Character) -> Bool {
+    char.unicodeScalars.allSatisfy { $0.value < 0x80 }
+  }
+
+  private static func isCJK(_ char: Character) -> Bool {
+    char.unicodeScalars.contains { scalar in
+      switch scalar.value {
+      case 0x2E80...0x2EFF, 0x2F00...0x2FDF, 0x3040...0x30FF,
+           0x3400...0x4DBF, 0x4E00...0x9FFF, 0xF900...0xFAFF,
+           0xFF00...0xFFEF:
+        return true
+      default:
+        return false
+      }
+    }
+  }
+
+  private static func isTightPunctuation(_ char: Character) -> Bool {
+    "，。！？；：、“”‘’（）《》【】,.!?;:()[]{}<>\"'".contains(char)
+  }
+}
+
 // MARK: - 语音跟随引擎(本地识别, 你说到哪滚到哪)
 
 @MainActor
@@ -211,28 +338,37 @@ private final class LinesView: NSView {
 
     let wrapWidth = max(40, bounds.width - 2 * hPad)
     curFont = makeFont()
-    let emptyGap = fontSize * 0.7
     var cursor: CGFloat = 0
 
-    for raw0 in script.components(separatedBy: "\n") {
-      // 显示层再次走统一清洗, 防止某个入口漏掉 Unicode 空白后直接进入渲染层。
-      let raw = TeleprompterScriptSanitizer.compactLine(raw0)
-      if raw.isEmpty { continue }
-      let attrs: [NSAttributedString.Key: Any] = [.font: curFont, .paragraphStyle: curPara]
-      let bounding = (raw as NSString).boundingRect(
-        with: NSSize(width: wrapWidth, height: .greatestFiniteMagnitude),
-        options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: attrs)
+    // 根上修：我们自己逐字测量和分行，不再让 CATextLayer 自动包行。
+    for raw in TeleprompterDisplayTextComposer.displayLines(
+      from: script,
+      wrapWidth: wrapWidth,
+      font: curFont,
+      paragraphStyle: curPara
+    ) {
+      let attributed = TeleprompterDisplayTextComposer.attributedLine(
+        for: raw,
+        font: curFont,
+        paragraphStyle: curPara,
+        color: textColor
+      )
+      let bounding = attributed.boundingRect(
+        with: NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude),
+        options: [.usesLineFragmentOrigin, .usesFontLeading],
+        context: nil
+      )
       let h = ceil(bounding.height) + 4
+      let w = min(wrapWidth, max(8, ceil(bounding.width) + 6))
 
       let tl = CATextLayer()
-      tl.string = NSAttributedString(string: raw, attributes: [
-        .font: curFont, .paragraphStyle: curPara, .foregroundColor: textColor])
-      tl.isWrapped = true
+      tl.string = attributed
+      tl.isWrapped = false
       tl.alignmentMode = .center
       tl.truncationMode = .none
       tl.contentsScale = scale2x
       tl.anchorPoint = CGPoint(x: 0.5, y: 0.5)
-      tl.bounds = CGRect(x: 0, y: 0, width: wrapWidth, height: h)
+      tl.bounds = CGRect(x: 0, y: 0, width: w, height: h)
       tl.masksToBounds = false
       layer?.addSublayer(tl)
 
@@ -258,16 +394,25 @@ private final class LinesView: NSView {
 
   private func applyKaraoke(_ i: Int, _ n: Int) {
     let s = lineTexts[i]
-    let full = NSMutableAttributedString(string: s, attributes: [
-      .font: curFont, .paragraphStyle: curPara, .foregroundColor: textColor])
+    let full = NSMutableAttributedString(attributedString: TeleprompterDisplayTextComposer.attributedLine(
+      for: s,
+      font: curFont,
+      paragraphStyle: curPara,
+      color: textColor
+    ))
     let len = (s as NSString).length
     if n > 0 { full.addAttribute(.foregroundColor, value: highlightColor, range: NSRange(location: 0, length: min(n, len))) }
     lineLayers[i].string = full
   }
 
   private func applyPlain(_ i: Int) {
-    lineLayers[i].string = NSAttributedString(string: lineTexts[i], attributes: [
-      .font: curFont, .paragraphStyle: curPara, .foregroundColor: textColor])
+    let line = lineTexts[i]
+    lineLayers[i].string = TeleprompterDisplayTextComposer.attributedLine(
+      for: line,
+      font: curFont,
+      paragraphStyle: curPara,
+      color: textColor
+    )
   }
 
   private func recolor() {

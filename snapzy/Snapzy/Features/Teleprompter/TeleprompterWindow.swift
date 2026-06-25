@@ -46,6 +46,15 @@ private enum TeleprompterScriptSanitizer {
     String(line.unicodeScalars.filter { !isRemovableWhitespace($0) })
   }
 
+  /// 删所有空白符但保留换行(编辑框增量输入/粘贴用: 一个字挨一个字, 段落换行留着, 标点保留)。
+  nonisolated static func compactKeepingNewlines(_ s: String) -> String {
+    String(s.unicodeScalars.filter { $0.value == 0x000A || !isRemovableWhitespace($0) })
+  }
+
+  nonisolated static func shouldRunEditPasteProbe() -> Bool {
+    ProcessInfo.processInfo.environment["SNAPZY_TELEPROMPTER_PROBE_EDIT_PASTE"] == "1"
+  }
+
   nonisolated static func isDebugLoggingEnabled() -> Bool {
     ProcessInfo.processInfo.environment["SNAPZY_TELEPROMPTER_LOG_RENDER"] == "1"
   }
@@ -562,16 +571,32 @@ private final class BarButton: NSButton {
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
-/// 编辑框: 粘贴即去格式(删空行/首尾空格, 标点保留), 不用再点完成。
+/// 编辑框: "无格式粘贴"总闸 — 不管打字/粘贴(任何格式)/拖拽/输入法, 文字一进来就删空格、
+/// 保留换行和标点。一道闸堵死所有入口, 不再逐条 override 各种粘贴。
 @MainActor
-private final class PlainTextView: NSTextView {
+private final class PlainTextView: NSTextView, NSTextViewDelegate {
+
+  /// 总闸: 所有文本变更(键入/粘贴/拖拽/输入法确认)都经过这里。含空格就拦下, 插清洗版。
+  func textView(_ view: NSTextView, shouldChangeTextIn range: NSRange, replacementString text: String?) -> Bool {
+    guard let text, !text.isEmpty else { return true }
+    let cleaned = TeleprompterScriptSanitizer.compactKeepingNewlines(text)
+    guard cleaned != text else { return true }   // 本就没空白, 放行
+    TeleprompterScriptSanitizer.logValue("editText shouldChange raw", value: text)
+    TeleprompterScriptSanitizer.logValue("editText shouldChange cleaned", value: cleaned)
+    view.insertText(cleaned, replacementRange: range)   // 插清洗版(光标自动正确)
+    return false                                         // 拦掉原始带空格版
+  }
+
+  // ⌘V 直接路径(双保险, 不依赖 delegate; 富文本/纯文本两种 selector 都收口到这)。
   override func paste(_ sender: Any?) {
     guard let s = NSPasteboard.general.string(forType: .string) else { super.paste(sender); return }
-    let n = TeleprompterScriptSanitizer.normalize(s)
+    let n = TeleprompterScriptSanitizer.compactKeepingNewlines(s)
     TeleprompterScriptSanitizer.logValue("PlainTextView.paste input", value: s)
     TeleprompterScriptSanitizer.logValue("PlainTextView.paste normalized", value: n)
     insertText(n, replacementRange: selectedRange())
   }
+  override func pasteAsPlainText(_ sender: Any?) { paste(sender) }
+  override func pasteAsRichText(_ sender: Any?) { paste(sender) }
 }
 
 // MARK: - 提词器窗口
@@ -707,6 +732,8 @@ final class TeleprompterWindow: NSWindow {
     editText.isHorizontallyResizable = false
     editText.textContainer?.widthTracksTextView = true
     editText.isRichText = false
+    editText.allowsUndo = true
+    editText.delegate = editText        // 总闸: 任何文本变更即时去空格(无格式粘贴)
     editText.drawsBackground = false
     editText.textColor = .white
     editText.insertionPointColor = .white
@@ -1075,6 +1102,7 @@ final class TeleprompterWindow: NSWindow {
     }
     orderFrontRegardless()
     maybeAutopasteClipboardForDebugVerification()
+    maybeRunEditPasteProbe()
   }
 
   var overlayWindowID: CGWindowID { CGWindowID(windowNumber) }
@@ -1372,6 +1400,27 @@ final class TeleprompterWindow: NSWindow {
           !clipboard.isEmpty else { return }
     TeleprompterScriptSanitizer.logValue("launch clipboard raw", value: clipboard)
     setLiveScript(clipboard)
+  }
+
+  /// 自检探针: 真实跑编辑框两条输入路径(打字/输入法/拖拽 走总闸, ⌘V 走 paste), 验证去空格。
+  private func maybeRunEditPasteProbe() {
+    guard TeleprompterScriptSanitizer.shouldRunEditPasteProbe() else { return }
+    if !editing { toggleEdit() }          // 进编辑态
+    makeFirstResponder(editText)
+
+    // 路径①: 模拟打字/输入法/拖拽 → 触发 shouldChangeTextIn 总闸
+    editText.string = ""
+    let typed = "你\u{20}好\u{3000}世\u{09}界，Hello\u{20}\u{20}world！A\u{20}B\u{A0}C\u{2009}D\u{200B}E\u{FEFF}。"
+    TeleprompterScriptSanitizer.logValue("probe insertText raw", value: typed)
+    editText.insertText(typed, replacementRange: editText.selectedRange())
+    TeleprompterScriptSanitizer.logValue("probe editText AFTER insertText", value: editText.string)
+
+    // 路径②: 模拟编辑框 ⌘V 粘贴(剪贴板) → PlainTextView.paste
+    editText.string = ""
+    editText.paste(nil)
+    TeleprompterScriptSanitizer.logValue("probe editText AFTER paste", value: editText.string)
+
+    if editing { toggleEdit() }           // 退出编辑 → 走 setLiveScript → 渲染面
   }
 
   /// 清空: 回显示态 + 留一行提示, 你直接 ⌘V 当场就显示(不用点完成)。

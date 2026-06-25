@@ -399,11 +399,9 @@ final class TeleprompterWindow: NSWindow {
   private func currentCat() -> String { spritePool[combo % spritePool.count] }   // 念完一句随机换形象
 
   private let placeholder = """
-  把逐字稿粘贴进来 — 点上面「编辑」，或直接 ⌘V
-
-  提词器只有你看得到，录屏和直播的观众都看不到。
-
-  跟着滚动的节奏念：当前这行最大最亮、最清楚，上下行往里缩、变暗。框可随意拖动、拖右下角改大小，字会自动重排居中。
+  把逐字稿粘贴进来：点上面「编辑」，或直接 ⌘V
+  只有你看得到，录屏和直播的观众都看不到
+  当前这行最大最亮，跟着滚动念就行
   """
 
   var hiddenFromCapture: Bool = false {

@@ -355,6 +355,7 @@ final class TeleprompterWindow: NSWindow {
   private var collapsed = false
   private var expandedFrame = NSRect.zero
   private let pillView = NSView()
+  private let pillBar = NSView()            // 收起态右上角控制条
   private var pillPlay: NSButton!
   private var pillExpand: NSButton!
   private let pillTrack = CALayer()
@@ -641,20 +642,41 @@ final class TeleprompterWindow: NSWindow {
 
   // MARK: - 灵动岛 收起/展开 胶囊
 
+  /// 通用控制按钮(白字小药丸), 大框/胶囊共用。
+  private func makeBarButton(_ title: String, _ sel: Selector) -> NSButton {
+    let b = BarButton(title: title, target: self, action: sel)
+    b.isBordered = false; b.wantsLayer = true
+    b.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.15).cgColor
+    b.layer?.cornerRadius = 8
+    b.attributedTitle = Self.barTitle(title)
+    return b
+  }
+
   private func setupPill() {
     pillView.wantsLayer = true
     pillView.isHidden = true
-    pillPlay = BarButton(title: "⏸", target: self, action: #selector(togglePlay))
-    pillPlay.isBordered = false; pillPlay.wantsLayer = true
-    pillPlay.attributedTitle = Self.barTitle("⏸")
-    pillPlay.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.15).cgColor
-    pillPlay.layer?.cornerRadius = 9
-    pillExpand = BarButton(title: "⤢", target: self, action: #selector(toggleCollapse))
-    pillExpand.isBordered = false; pillExpand.wantsLayer = true
-    pillExpand.attributedTitle = Self.barTitle("⤢")
-    pillExpand.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.15).cgColor
-    pillExpand.layer?.cornerRadius = 9
-    // 收起态: 复用 linesView 显示 2-3 行小字, pillView 只放 左播放/右展开/底进度 的薄控件
+    // 收起态: 复用 linesView 显示 2-3 行小字 + 底进度 + 右上角控制条(后退/暂停/速度/展开)
+    pillBar.wantsLayer = true
+    pillBar.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.50).cgColor
+    pillBar.layer?.cornerRadius = 13
+    pillBar.layer?.borderWidth = 0.5
+    pillBar.layer?.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
+    pillPlay = makeBarButton("⏸", #selector(togglePlay))
+    pillExpand = makeBarButton("⤢", #selector(toggleCollapse))
+    let st = NSStackView(views: [
+      makeBarButton("⏪", #selector(stepBack)), pillPlay,
+      makeBarButton("慢", #selector(speedDown)), makeBarButton("快", #selector(speedUp)),
+      pillExpand,
+    ])
+    st.orientation = .horizontal; st.spacing = 3; st.distribution = .fillEqually
+    st.translatesAutoresizingMaskIntoConstraints = false
+    pillBar.addSubview(st)
+    NSLayoutConstraint.activate([
+      st.leadingAnchor.constraint(equalTo: pillBar.leadingAnchor, constant: 5),
+      st.trailingAnchor.constraint(equalTo: pillBar.trailingAnchor, constant: -5),
+      st.topAnchor.constraint(equalTo: pillBar.topAnchor, constant: 3),
+      st.bottomAnchor.constraint(equalTo: pillBar.bottomAnchor, constant: -3),
+    ])
     pillTrack.backgroundColor = NSColor.white.withAlphaComponent(0.14).cgColor
     pillTrack.cornerRadius = 1.5
     pillFill.colors = [NSColor.systemTeal.cgColor,
@@ -663,8 +685,7 @@ final class TeleprompterWindow: NSWindow {
     pillFill.cornerRadius = 1.5
     pillView.layer?.addSublayer(pillTrack)
     pillView.layer?.addSublayer(pillFill)
-    pillView.addSubview(pillPlay)
-    pillView.addSubview(pillExpand)
+    pillView.addSubview(pillBar)
     contentView?.addSubview(pillView)
   }
 
@@ -674,8 +695,8 @@ final class TeleprompterWindow: NSWindow {
     if collapsed {
       expandedFrame = frame
       setCollapsedVisibility(true)
-      // 很宽很矮的横条: 2-3 行小字, 不占地方, 可拖到镜头下面
-      let pw = min(max(expandedFrame.width, 520), 700), ph: CGFloat = 100
+      // 很宽很矮的横条: 2-3 行小字 + 右上角控制条, 不占地方, 可拖到镜头下面
+      let pw = min(max(expandedFrame.width, 520), 700), ph: CGFloat = 118
       animateFrame(to: NSRect(x: frame.midX - pw / 2, y: frame.maxY - ph, width: pw, height: ph))
     } else {
       setCollapsedVisibility(false)
@@ -734,13 +755,11 @@ final class TeleprompterWindow: NSWindow {
 
     // ===== 收起态: 很宽很矮的横条, 复用 linesView 显示 2-3 行小字 =====
     if collapsed {
-      let cb: CGFloat = 30
       pillView.frame = cv.bounds
-      pillPlay.frame = NSRect(x: 8, y: (h - cb) / 2, width: cb, height: cb)
-      pillExpand.frame = NSRect(x: w - 8 - cb, y: (h - cb) / 2, width: cb, height: cb)
-      let lx = 8 + cb + 8, lw = max(20, w - 2 * (8 + cb + 8))
-      pillTrack.frame = CGRect(x: lx, y: 6, width: lw, height: 3)
-      linesView.frame = NSRect(x: lx, y: 11, width: lw, height: h - 15)
+      let bh: CGFloat = 26, bw: CGFloat = 200
+      pillBar.frame = NSRect(x: w - bw - 8, y: h - bh - 6, width: bw, height: bh)   // 右上角控制条
+      pillTrack.frame = CGRect(x: 12, y: 6, width: max(20, w - 24), height: 3)       // 底进度
+      linesView.frame = NSRect(x: 12, y: 11, width: max(20, w - 24), height: h - bh - 18)
       let cf: CGFloat = 18                                   // 收起态固定小字(不随宽度变大)
       if abs(linesView.fontSize - cf) > 0.5 { linesView.fontSize = cf }
       updateJourney()

@@ -38,7 +38,7 @@ struct AboutSettingsView: View {
         .shadow(color: .black.opacity(0.2), radius: 10, y: 5)
 
       VStack(spacing: Spacing.xs) {
-        Text(verbatim: "Snapzy")
+        Text(verbatim: "LumiCue")
           .font(.system(size: 28, weight: .bold, design: .rounded))
 
         Text(L10n.PreferencesAbout.appSubtitle)
@@ -106,7 +106,7 @@ struct AboutSettingsView: View {
         .buttonStyle(.plain)
         .help(L10n.PreferencesAbout.github)
 
-        Link(destination: URL(string: "https://github.com/duongductrong/Snapzy/issues")!) {
+        Link(destination: URL(string: "https://github.com/duongductrong/LumiCue/issues")!) {
           Image(systemName: "ant.fill")
             .font(.system(size: 14))
             .foregroundColor(.secondary)

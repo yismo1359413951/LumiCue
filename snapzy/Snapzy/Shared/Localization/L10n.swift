@@ -314,7 +314,7 @@ enum L10n {
     )
     static let configSyncQueuedDescription = string(
       "preferences-advanced.config-sync-queued-description",
-      defaultValue: "Sync queued. Snapzy will update config.toml shortly.",
+      defaultValue: "Sync queued. LumiCue will update config.toml shortly.",
       comment: "Config sync row description when sync is queued"
     )
     static let configSyncWritingDescription = string(
@@ -341,12 +341,12 @@ enum L10n {
     static let configAccessWarningTitle = string(
       "preferences-advanced.config-access-warning-title",
       defaultValue: "Config folder access needed",
-      comment: "Warning title when Snapzy has not been granted config folder access"
+      comment: "Warning title when LumiCue has not been granted config folder access"
     )
     static func configAccessWarningDescription(_ path: String) -> String {
       format(
         "preferences-advanced.config-access-warning-description",
-        defaultValue: "Grant access to %@ once so Snapzy can create config.toml and apply direct edits on launch.",
+        defaultValue: "Grant access to %@ once so LumiCue can create config.toml and apply direct edits on launch.",
         comment: "Warning description when config folder access is missing. %@ is the expected config directory path.",
         path
       )
@@ -379,17 +379,17 @@ enum L10n {
     static let configSyncing = string(
       "preferences-advanced.config-syncing",
       defaultValue: "Syncing config.toml...",
-      comment: "Toast shown while Snapzy syncs current settings into config.toml"
+      comment: "Toast shown while LumiCue syncs current settings into config.toml"
     )
     static let configSynced = string(
       "preferences-advanced.config-synced",
       defaultValue: "config.toml synced.",
-      comment: "Toast shown after Snapzy syncs current settings into config.toml"
+      comment: "Toast shown after LumiCue syncs current settings into config.toml"
     )
     static let configSyncNeedsConfirmation = string(
       "preferences-advanced.config-sync-needs-confirmation",
       defaultValue: "config.toml has external changes.",
-      comment: "Toast shown when Snapzy needs confirmation before replacing externally changed config.toml"
+      comment: "Toast shown when LumiCue needs confirmation before replacing externally changed config.toml"
     )
     static let configSyncConfirmationTitle = string(
       "preferences-advanced.config-sync-confirmation-title",
@@ -398,7 +398,7 @@ enum L10n {
     )
     static let configSyncConfirmationMessage = string(
       "preferences-advanced.config-sync-confirmation-message",
-      defaultValue: "config.toml no longer matches Snapzy settings and may have edits from outside the app. Syncing will replace it with current settings.",
+      defaultValue: "config.toml no longer matches LumiCue settings and may have edits from outside the app. Syncing will replace it with current settings.",
       comment: "Confirmation alert message before replacing a config file with external changes"
     )
     static let syncConfigConfirmButton = string(
@@ -433,12 +433,12 @@ enum L10n {
     )
     static let exportPanelTitle = string(
       "preferences-advanced.export-panel-title",
-      defaultValue: "Export Snapzy Config",
+      defaultValue: "Export LumiCue Config",
       comment: "Config export save panel title"
     )
     static let importPanelTitle = string(
       "preferences-advanced.import-panel-title",
-      defaultValue: "Import Snapzy Config",
+      defaultValue: "Import LumiCue Config",
       comment: "Config import open panel title"
     )
     static let configDirectoryPanelTitle = string(
@@ -449,7 +449,7 @@ enum L10n {
     static func configDirectoryPanelMessage(_ path: String) -> String {
       format(
         "preferences-advanced.config-directory-panel-message",
-        defaultValue: "Grant access for %@. If the folder is missing, Snapzy will create it automatically.",
+        defaultValue: "Grant access for %@. If the folder is missing, LumiCue will create it automatically.",
         comment: "Config directory access panel message. %@ is the suggested directory path.",
         path
       )
@@ -462,7 +462,7 @@ enum L10n {
     static func configDirectoryPanelOnboardingMessage(_ path: String) -> String {
       format(
         "preferences-advanced.config-directory-panel-onboarding-message",
-        defaultValue: "Grant access for %@. Snapzy will create config.toml there if it is missing.",
+        defaultValue: "Grant access for %@. LumiCue will create config.toml there if it is missing.",
         comment: "Config directory access panel message from onboarding. %@ is the suggested directory path.",
         path
       )
@@ -470,7 +470,7 @@ enum L10n {
     static func configDirectoryMismatch(_ path: String) -> String {
       format(
         "preferences-advanced.config-directory-mismatch",
-        defaultValue: "Choose %@ to keep Snapzy config in the default dotfiles location.",
+        defaultValue: "Choose %@ to keep LumiCue config in the default dotfiles location.",
         comment: "Config directory mismatch validation message. %@ is the expected directory path.",
         path
       )
@@ -537,7 +537,7 @@ enum L10n {
     )
     static let restoreDefaultsConfirmationMessage = string(
       "preferences-advanced.restore-defaults-confirmation-message",
-      defaultValue: "If you confirm, Snapzy will replace config.toml with default values, reset app settings, and clear cloud credentials. Saved captures are not deleted.",
+      defaultValue: "If you confirm, LumiCue will replace config.toml with default values, reset app settings, and clear cloud credentials. Saved captures are not deleted.",
       comment: "Restore defaults confirmation alert message"
     )
     static func importFailedWithErrors(_ count: Int) -> String {
@@ -687,7 +687,7 @@ enum L10n {
     )
     static let quitSnapzy = string(
       "menu.quit-snapzy",
-      defaultValue: "Quit Snapzy",
+      defaultValue: "Quit LumiCue",
       comment: "Status bar menu item title for quitting the app"
     )
   }
@@ -1178,7 +1178,7 @@ enum L10n {
   enum Splash {
     static let welcomeTitle = string(
       "splash.welcome-title",
-      defaultValue: "Welcome to Snapzy",
+      defaultValue: "Welcome to LumiCue",
       comment: "Splash screen welcome title"
     )
     static let welcomeSubtitle = string(
@@ -1267,7 +1267,7 @@ enum L10n {
     )
     static let languageSubtitle = string(
       "onboarding.language.subtitle",
-      defaultValue: "Snapzy can follow your Mac or preview a specific app language during setup.",
+      defaultValue: "LumiCue can follow your Mac or preview a specific app language during setup.",
       comment: "Onboarding language step subtitle"
     )
     static let languageAutoTitle = string(
@@ -1301,7 +1301,7 @@ enum L10n {
     )
     static let permissionsSubtitle = string(
       "onboarding.permissions.subtitle",
-      defaultValue: "Snapzy needs permissions for capture, audio, and save location.",
+      defaultValue: "LumiCue needs permissions for capture, audio, and save location.",
       comment: "Onboarding permissions step subtitle"
     )
     static let screenRecording = string(
@@ -1366,7 +1366,7 @@ enum L10n {
     )
     static let chooseFolderMessage = string(
       "onboarding.permissions.choose-folder-message",
-      defaultValue: "Choose a folder for Snapzy captures (default: Desktop/Snapzy)",
+      defaultValue: "Choose a folder for LumiCue captures (default: Desktop/LumiCue)",
       comment: "Open panel message for selecting export directory during onboarding"
     )
     static let screenRecordingIdentityBlocked = string(
@@ -1382,7 +1382,7 @@ enum L10n {
     )
     static let configAccessSubtitle = string(
       "onboarding.config-access.subtitle",
-      defaultValue: "Snapzy uses a TOML file for portable settings, backups, and dotfile workflows.",
+      defaultValue: "LumiCue uses a TOML file for portable settings, backups, and dotfile workflows.",
       comment: "Onboarding config access step subtitle"
     )
     static let configAccessFolderTitle = string(
@@ -1397,12 +1397,12 @@ enum L10n {
     )
     static let configAccessFolderDescription = string(
       "onboarding.config-access.folder-description",
-      defaultValue: "Grant access once. Snapzy will create config.toml if needed and apply valid direct edits on launch.",
+      defaultValue: "Grant access once. LumiCue will create config.toml if needed and apply valid direct edits on launch.",
       comment: "Onboarding config access description"
     )
     static let configAccessPrivacyNote = string(
       "onboarding.config-access.privacy-note",
-      defaultValue: "This only grants Snapzy access to its config folder. It does not import secrets or scan your files.",
+      defaultValue: "This only grants LumiCue access to its config folder. It does not import secrets or scan your files.",
       comment: "Privacy note on onboarding config access step"
     )
     static let configAccessReady = string(
@@ -1423,7 +1423,7 @@ enum L10n {
     )
     static let shortcutsSubtitle = string(
       "onboarding.shortcuts.subtitle",
-      defaultValue: "Assign system shortcuts to Snapzy for quick access.",
+      defaultValue: "Assign system shortcuts to LumiCue for quick access.",
       comment: "Onboarding shortcuts step subtitle"
     )
     static let recordingSection = string(
@@ -1439,7 +1439,7 @@ enum L10n {
     static let resolveShortcutOverlap = string(
       "onboarding.shortcuts.resolve-overlap",
       defaultValue: "Resolve macOS shortcut overlap",
-      comment: "Warning title when system screenshot shortcuts overlap with Snapzy shortcuts"
+      comment: "Warning title when system screenshot shortcuts overlap with LumiCue shortcuts"
     )
     static let openSettings = string(
       "onboarding.shortcuts.open-settings",
@@ -1458,7 +1458,7 @@ enum L10n {
     )
     static let guideStep3 = string(
       "onboarding.shortcuts.guide-step-3",
-      defaultValue: "Uncheck the macOS screenshot shortcuts that overlap with the Snapzy shortcuts you want to keep on",
+      defaultValue: "Uncheck the macOS screenshot shortcuts that overlap with the LumiCue shortcuts you want to keep on",
       comment: "Step 3 in onboarding shortcut conflict resolution guide"
     )
     static let noConflictDetected = string(
@@ -1489,7 +1489,7 @@ enum L10n {
     )
     static let diagnosticsDescription = string(
       "onboarding.diagnostics.description",
-      defaultValue: "Snapzy can collect anonymous diagnostic logs when something goes wrong. These logs help us find and fix bugs faster.",
+      defaultValue: "LumiCue can collect anonymous diagnostic logs when something goes wrong. These logs help us find and fix bugs faster.",
       comment: "Diagnostics opt-in description"
     )
     static let enableDiagnosticLogging = string(
@@ -1541,12 +1541,12 @@ enum L10n {
     )
     static let sponsorDescription = string(
       "onboarding.sponsor.description",
-      defaultValue: "Snapzy is now open-source. If it saves you time, consider supporting ongoing development.",
+      defaultValue: "LumiCue is now open-source. If it saves you time, consider supporting ongoing development.",
       comment: "Onboarding sponsor step description"
     )
     static let sponsorOptionalNote = string(
       "onboarding.sponsor.optional-note",
-      defaultValue: "Support is optional. Snapzy remains fully usable without sponsoring.",
+      defaultValue: "Support is optional. LumiCue remains fully usable without sponsoring.",
       comment: "Note under sponsor options"
     )
 
@@ -1557,7 +1557,7 @@ enum L10n {
     )
     static let completionDescription = string(
       "onboarding.completion.description",
-      defaultValue: "Snapzy is ready. Access it from the menu bar or use your keyboard shortcuts.",
+      defaultValue: "LumiCue is ready. Access it from the menu bar or use your keyboard shortcuts.",
       comment: "Onboarding completion description"
     )
     static let menuBar = string(
@@ -1834,7 +1834,7 @@ enum L10n {
     )
     static let startAtLoginDescription = string(
       "preferences-general.start-at-login-description",
-      defaultValue: "Launch Snapzy when you log in",
+      defaultValue: "Launch LumiCue when you log in",
       comment: "General preferences setting description"
     )
     static let playSoundsTitle = string(
@@ -1864,7 +1864,7 @@ enum L10n {
     )
     static let languageDescription = string(
       "preferences-general.language-description",
-      defaultValue: "Choose the language used across Snapzy",
+      defaultValue: "Choose the language used across LumiCue",
       comment: "General preferences setting description"
     )
     static let languageSystem = string(
@@ -1879,22 +1879,22 @@ enum L10n {
     )
     static let languageRelaunchConfirmationTitle = string(
       "preferences-general.language-relaunch-confirmation-title",
-      defaultValue: "Relaunch Snapzy?",
+      defaultValue: "Relaunch LumiCue?",
       comment: "Alert title shown before the app relaunches to apply a language change"
     )
     static let languageRelaunchConfirmationMessage = string(
       "preferences-general.language-relaunch-confirmation-message",
-      defaultValue: "Snapzy needs to quit and reopen to apply this language change everywhere.",
+      defaultValue: "LumiCue needs to quit and reopen to apply this language change everywhere.",
       comment: "Alert message shown before the app relaunches to apply a language change"
     )
     static let languageRelaunchConfirmationAction = string(
       "preferences-general.language-relaunch-confirmation-action",
-      defaultValue: "Relaunch Snapzy",
+      defaultValue: "Relaunch LumiCue",
       comment: "Alert button title that confirms relaunching the app after changing language"
     )
     static let languageRelaunchErrorTitle = string(
       "preferences-general.language-relaunch-error-title",
-      defaultValue: "Could Not Relaunch Snapzy",
+      defaultValue: "Could Not Relaunch LumiCue",
       comment: "Alert title shown when the app cannot relaunch after changing language"
     )
     static let saveLocationTitle = string(
@@ -1904,7 +1904,7 @@ enum L10n {
     )
     static let saveLocationDescription = string(
       "preferences-general.save-location-description",
-      defaultValue: "Where Snapzy stores captures",
+      defaultValue: "Where LumiCue stores captures",
       comment: "General preferences setting description"
     )
     static let chooseButton = string(
@@ -2020,7 +2020,7 @@ enum L10n {
     )
     static let defaultSaveLocation = string(
       "preferences-general.default-save-location",
-      defaultValue: "Desktop/Snapzy",
+      defaultValue: "Desktop/LumiCue",
       comment: "Default export location display label"
     )
     static func accessNotGranted(_ folderName: String) -> String {
@@ -2033,7 +2033,7 @@ enum L10n {
     }
     static let chooseSaveLocationMessage = string(
       "preferences-general.choose-save-location-message",
-      defaultValue: "Choose where Snapzy saves captures",
+      defaultValue: "Choose where LumiCue saves captures",
       comment: "Open panel message for selecting the default export location"
     )
     static let saveHereButton = string(
@@ -2046,7 +2046,7 @@ enum L10n {
   enum PreferencesPermissions {
     static let intro = string(
       "preferences-permissions.intro",
-      defaultValue: "Snapzy requires certain permissions to capture your screen and audio.",
+      defaultValue: "LumiCue requires certain permissions to capture your screen and audio.",
       comment: "Introductory text for the permissions preferences tab"
     )
   }
@@ -2418,7 +2418,7 @@ enum L10n {
     )
     static let includeInScreenshotsDescription = string(
       "preferences-capture.include-in-screenshots-description",
-      defaultValue: "Show Snapzy windows such as Annotate in captured images",
+      defaultValue: "Show LumiCue windows such as Annotate in captured images",
       comment: "Capture preferences setting description"
     )
     static let includeInRecordingsTitle = string(
@@ -2428,7 +2428,7 @@ enum L10n {
     )
     static let includeInRecordingsDescription = string(
       "preferences-capture.include-in-recordings-description",
-      defaultValue: "Show Snapzy windows such as Annotate in recorded videos",
+      defaultValue: "Show LumiCue windows such as Annotate in recorded videos",
       comment: "Capture preferences setting description"
     )
     static let hideDesktopIconsTitle = string(
@@ -2483,7 +2483,7 @@ enum L10n {
     )
     static let jpegCutoutNote = string(
       "preferences-capture.jpeg-cutout-note",
-      defaultValue: "Object cutout captures require transparency. Snapzy will save them as PNG even when JPEG is selected.",
+      defaultValue: "Object cutout captures require transparency. LumiCue will save them as PNG even when JPEG is selected.",
       comment: "Informational note shown when JPEG screenshot format is selected"
     )
     static let defaultPresetTitle = string(
@@ -2813,7 +2813,7 @@ enum L10n {
     )
     static let bringForwardAfterDragDescription = string(
       "preferences-capture.annotate-bring-forward-after-drag-description",
-      defaultValue: "When the editor stays open, bring Snapzy to the front and focus Annotate after the drop completes",
+      defaultValue: "When the editor stays open, bring LumiCue to the front and focus Annotate after the drop completes",
       comment: "Annotate preferences setting description for activating Annotate after drag-to-app"
     )
   }
@@ -2831,12 +2831,12 @@ enum L10n {
     )
     static let systemConflictTitle = string(
       "preferences-shortcuts.system-conflict-title",
-      defaultValue: "macOS screenshot shortcuts overlap with Snapzy",
+      defaultValue: "macOS screenshot shortcuts overlap with LumiCue",
       comment: "Title for system shortcut conflict warning"
     )
     static let systemConflictDescription = string(
       "preferences-shortcuts.system-conflict-description",
-      defaultValue: "Turn off the overlapping macOS shortcuts to avoid conflicts with the Snapzy shortcuts you keep enabled.",
+      defaultValue: "Turn off the overlapping macOS shortcuts to avoid conflicts with the LumiCue shortcuts you keep enabled.",
       comment: "Description for system shortcut conflict warning"
     )
     static let howToDisable = string(
@@ -2856,7 +2856,7 @@ enum L10n {
     )
     static let noConflictsDescription = string(
       "preferences-shortcuts.no-conflicts-description",
-      defaultValue: "No overlapping macOS screenshot shortcuts were found for the Snapzy shortcuts you currently have enabled.",
+      defaultValue: "No overlapping macOS screenshot shortcuts were found for the LumiCue shortcuts you currently have enabled.",
       comment: "Description for success state when there are no system shortcut conflicts"
     )
     static let globalSection = string(
@@ -2886,7 +2886,7 @@ enum L10n {
     )
     static let disableShortcutsMessage = string(
       "preferences-shortcuts.disable-shortcuts-message",
-      defaultValue: "You won't be able to capture screenshots or recordings using keyboard shortcuts from any app. You'll need to open Snapzy manually to use capture features.",
+      defaultValue: "You won't be able to capture screenshots or recordings using keyboard shortcuts from any app. You'll need to open LumiCue manually to use capture features.",
       comment: "Alert message for disabling global shortcuts"
     )
     static let captureSection = string(
@@ -3087,12 +3087,12 @@ enum L10n {
     )
     static let supportTitle = string(
       "preferences-about.support-title",
-      defaultValue: "Support Snapzy",
+      defaultValue: "Support LumiCue",
       comment: "About screen sponsor card title"
     )
     static let supportDescription = string(
       "preferences-about.support-description",
-      defaultValue: "Snapzy is open-source. Sponsor if it helps your workflow.",
+      defaultValue: "LumiCue is open-source. Sponsor if it helps your workflow.",
       comment: "About screen sponsor card description"
     )
     static let sponsorButtonGithub = string(
@@ -3283,12 +3283,12 @@ enum L10n {
     )
     static let preferencesMessage = string(
       "microphone.preferences-message",
-      defaultValue: "Snapzy needs microphone permission. Please enable it in System Settings > Privacy & Security > Microphone.",
+      defaultValue: "LumiCue needs microphone permission. Please enable it in System Settings > Privacy & Security > Microphone.",
       comment: "Alert message when microphone permission is missing from preferences or toolbar"
     )
     static let recordingMessage = string(
       "microphone.recording-message",
-      defaultValue: "Snapzy needs microphone permission to record audio. Please grant access in System Settings.",
+      defaultValue: "LumiCue needs microphone permission to record audio. Please grant access in System Settings.",
       comment: "Alert message when microphone permission is missing while starting a recording"
     )
     static let continueWithoutMic = string(
@@ -3386,7 +3386,7 @@ enum L10n {
     )
     static let exportDescription = string(
       "cloud-transfer.export-description",
-      defaultValue: "Create an encrypted archive you can import on another Mac. Snapzy does not store this archive passphrase.",
+      defaultValue: "Create an encrypted archive you can import on another Mac. LumiCue does not store this archive passphrase.",
       comment: "Description for cloud credential export sheet"
     )
     static let archiveContents = string(
@@ -3441,12 +3441,12 @@ enum L10n {
     )
     static let savePanelMessage = string(
       "cloud-transfer.save-panel-message",
-      defaultValue: "Choose where Snapzy should save the encrypted credential archive.",
+      defaultValue: "Choose where LumiCue should save the encrypted credential archive.",
       comment: "Message shown in the save panel for exporting cloud credentials"
     )
     static let chooserMessage = string(
       "cloud-transfer.chooser-message",
-      defaultValue: "Choose a Snapzy encrypted credential archive.",
+      defaultValue: "Choose a LumiCue encrypted credential archive.",
       comment: "Message shown in the open panel for importing cloud credentials"
     )
     static func archiveSaved(_ path: String) -> String {
@@ -3472,7 +3472,7 @@ enum L10n {
     }
     static let invalidArchive = string(
       "cloud-transfer.error.invalid-archive",
-      defaultValue: "The selected file is not a valid Snapzy cloud credential archive.",
+      defaultValue: "The selected file is not a valid LumiCue cloud credential archive.",
       comment: "Error shown when an imported cloud credential archive is invalid"
     )
     static func unsupportedSchemaVersion(_ version: Int) -> String {
@@ -3823,7 +3823,7 @@ enum L10n {
     )
     static let importCredentialsMessage = string(
       "cloud-settings.import-credentials-message",
-      defaultValue: "Snapzy will load the imported values into the editor. Your current saved configuration stays unchanged until you click Save & Test.",
+      defaultValue: "LumiCue will load the imported values into the editor. Your current saved configuration stays unchanged until you click Save & Test.",
       comment: "Alert message for importing cloud credentials over an existing configuration"
     )
     static let transferAlertTitle = string(
@@ -4035,7 +4035,7 @@ enum L10n {
     )
     static let importEncryptedArchiveDescription = string(
       "cloud-settings.import-encrypted-archive-description",
-      defaultValue: "Load a previously exported Snapzy cloud archive to prefill this form.",
+      defaultValue: "Load a previously exported LumiCue cloud archive to prefill this form.",
       comment: "Description for importing an encrypted cloud credential archive"
     )
     static let provider = string(
@@ -4486,7 +4486,7 @@ enum L10n {
     )
     static let saveFailedMessage = string(
       "annotate.save-failed-message",
-      defaultValue: "Snapzy couldn't write to the selected location. Please choose another folder.",
+      defaultValue: "LumiCue couldn't write to the selected location. Please choose another folder.",
       comment: "Alert message shown when annotate save fails"
     )
     static let overwriteCloudFileOnSaveMessage = string(
@@ -5071,7 +5071,7 @@ enum L10n {
     )
     static let followMouseOnlyWorksWithSnapzy = string(
       "video-editor.follow-mouse-only-works-with-snapzy",
-      defaultValue: "Follow Mouse only works with videos recorded by Snapzy after mouse tracking was added.",
+      defaultValue: "Follow Mouse only works with videos recorded by LumiCue after mouse tracking was added.",
       comment: "Warning message shown when follow-mouse zoom mode is unavailable"
     )
     static let followMouseActiveDescription = string(
@@ -5331,7 +5331,7 @@ enum L10n {
     static func cannotReplaceOriginalMessage(_ details: String) -> String {
       format(
         "video-editor.cannot-replace-original-message",
-        defaultValue: "Snapzy doesn't have write access to this file location. Save as a copy instead.\n\n%@",
+        defaultValue: "LumiCue doesn't have write access to this file location. Save as a copy instead.\n\n%@",
         comment: "Alert message shown when replacing the original video file is not allowed. %@ is the lower-level error message.",
         details
       )
@@ -5602,12 +5602,12 @@ enum L10n {
     )
     static let previewShowingLatestWhileLockingNewerContent = string(
       "scrolling-capture.preview-showing-latest-while-locking-newer-content",
-      defaultValue: "Showing the latest stitched result while Snapzy locks newer content.",
+      defaultValue: "Showing the latest stitched result while LumiCue locks newer content.",
       comment: "Preview description shown while scrolling capture syncs newer content"
     )
     static let previewPausedScrollSlowly = string(
       "scrolling-capture.preview-paused-scroll-slowly",
-      defaultValue: "Preview paused - scroll slowly so Snapzy can re-align.",
+      defaultValue: "Preview paused - scroll slowly so LumiCue can re-align.",
       comment: "Preview description shown when scrolling capture needs recovery"
     )
     static let previewFinishingSavingCapture = string(
@@ -5722,7 +5722,7 @@ enum L10n {
     )
     static let guidanceSnapzyLockingFirstFrame = string(
       "scrolling-capture.guidance-snapzy-locking-first-frame",
-      defaultValue: "Snapzy is locking the first frame",
+      defaultValue: "LumiCue is locking the first frame",
       comment: "Selection guidance detail shown while the first scrolling capture frame is locking"
     )
     static let guidanceSlowDown = string(
@@ -5732,7 +5732,7 @@ enum L10n {
     )
     static let guidanceKeepOneDirectionSoSnapzyCanRealign = string(
       "scrolling-capture.guidance-keep-one-direction-so-snapzy-can-realign",
-      defaultValue: "Keep one direction so Snapzy can re-align",
+      defaultValue: "Keep one direction so LumiCue can re-align",
       comment: "Selection guidance detail shown when scrolling capture needs recovery"
     )
     static let guidanceKeepSteadierPace = string(
@@ -5787,7 +5787,7 @@ enum L10n {
     )
     static let guidanceSnapzySealingStitchedResult = string(
       "scrolling-capture.guidance-snapzy-sealing-stitched-result",
-      defaultValue: "Snapzy is sealing the stitched result",
+      defaultValue: "LumiCue is sealing the stitched result",
       comment: "Selection guidance detail shown while scrolling capture finalizes"
     )
     static let guidanceSavingLongScreenshot = string(
@@ -5856,7 +5856,7 @@ enum L10n {
     }
     static let captionLivePreviewRunning = string(
       "scrolling-capture.caption-live-preview-running",
-      defaultValue: "Live preview running while Snapzy locks the stitched frame.",
+      defaultValue: "Live preview running while LumiCue locks the stitched frame.",
       comment: "Preview caption shown while the scrolling capture live preview stream is active"
     )
     static let captionFinalizingStitchedResult = string(
@@ -6187,12 +6187,12 @@ enum L10n {
     )
     static let saveLocationAccessRequiredMessage = string(
       "recording.save-location-access-required-message",
-      defaultValue: "Snapzy needs a save folder permission to continue. Please choose a folder in onboarding or grant it now.",
+      defaultValue: "LumiCue needs a save folder permission to continue. Please choose a folder in onboarding or grant it now.",
       comment: "Alert message shown when save location access is missing"
     )
     static let chooseSaveLocationMessage = string(
       "recording.choose-save-location-message",
-      defaultValue: "Choose where Snapzy should save screenshots and recordings",
+      defaultValue: "Choose where LumiCue should save screenshots and recordings",
       comment: "Prompt shown when asking for an export directory during recording flows"
     )
     static let screenPermissionDenied = string(
@@ -6279,12 +6279,12 @@ enum L10n {
     )
     static let alertMessage = string(
       "crash-report.alert-message",
-      defaultValue: "Snapzy bundled your diagnostic logs into one file. Drag the file below to the report page.",
+      defaultValue: "LumiCue bundled your diagnostic logs into one file. Drag the file below to the report page.",
       comment: "Alert message shown when presenting a problem report dialog with a log bundle"
     )
     static let alertMessageNoLogBundle = string(
       "crash-report.alert-message-no-log-bundle",
-      defaultValue: "Snapzy could not prepare a diagnostic log bundle. You can still open the report page and describe the problem.",
+      defaultValue: "LumiCue could not prepare a diagnostic log bundle. You can still open the report page and describe the problem.",
       comment: "Alert message shown when presenting a problem report dialog without a log bundle"
     )
     static let submit = string(
@@ -6307,23 +6307,23 @@ enum L10n {
   enum FileAccess {
     nonisolated static let chooseCapturesFolderMessage = string(
       "file-access.choose-captures-folder-message",
-      defaultValue: "Choose where Snapzy should save screenshots and recordings",
-      comment: "Open panel message shown when Snapzy asks the user to grant access to a save folder"
+      defaultValue: "Choose where LumiCue should save screenshots and recordings",
+      comment: "Open panel message shown when LumiCue asks the user to grant access to a save folder"
     )
     nonisolated static let grantAccessPrompt = string(
       "file-access.grant-access-prompt",
       defaultValue: "Grant Access",
-      comment: "Open panel prompt shown when Snapzy asks the user to grant folder access"
+      comment: "Open panel prompt shown when LumiCue asks the user to grant folder access"
     )
     nonisolated static let chooseFolderPrompt = string(
       "file-access.choose-folder-prompt",
       defaultValue: "Choose Folder",
-      comment: "Open panel prompt shown when Snapzy asks the user to choose a folder"
+      comment: "Open panel prompt shown when LumiCue asks the user to choose a folder"
     )
     nonisolated static let desktopPicturesAccessMessage = string(
       "file-access.desktop-pictures-access-message",
       defaultValue: "Select the Desktop Pictures folder to grant access",
-      comment: "Open panel message shown when Snapzy asks for access to the system Desktop Pictures folder"
+      comment: "Open panel message shown when LumiCue asks for access to the system Desktop Pictures folder"
     )
     static let bookmarkSaveFailedTitle = string(
       "file-access.bookmark-save-failed-title",
@@ -6332,7 +6332,7 @@ enum L10n {
     )
     static let bookmarkSaveFailedMessage = string(
       "file-access.bookmark-save-failed-message",
-      defaultValue: "Snapzy could not persist access to this folder. Please choose the folder again and confirm permission.",
+      defaultValue: "LumiCue could not persist access to this folder. Please choose the folder again and confirm permission.",
       comment: "Alert message when security-scoped bookmark persistence fails"
     )
   }
@@ -6623,46 +6623,46 @@ enum L10n {
     nonisolated static let saveLocationPermissionRequired = string(
       "screen-capture.save-location-permission-required",
       defaultValue: "Save location permission is required.",
-      comment: "Error shown when Snapzy cannot save a screenshot because folder access has not been granted"
+      comment: "Error shown when LumiCue cannot save a screenshot because folder access has not been granted"
     )
     nonisolated static let unableToCaptureSelectedArea = string(
       "screen-capture.unable-to-capture-selected-area",
       defaultValue: "Unable to capture the selected area.",
-      comment: "Error shown when Snapzy cannot capture the selected screenshot area"
+      comment: "Error shown when LumiCue cannot capture the selected screenshot area"
     )
     nonisolated static let failedToCropCapturedImage = string(
       "screen-capture.failed-to-crop-captured-image",
       defaultValue: "Failed to crop the captured image",
-      comment: "Error shown when Snapzy captures an image but fails to crop it to the selected area"
+      comment: "Error shown when LumiCue captures an image but fails to crop it to the selected area"
     )
     nonisolated static func couldNotCreateDirectory(_ message: String) -> String {
       format(
         "screen-capture.could-not-create-directory",
         defaultValue: "Could not create the save folder: %@",
-        comment: "Error shown when Snapzy cannot create the selected save folder. %@ is the underlying filesystem error.",
+        comment: "Error shown when LumiCue cannot create the selected save folder. %@ is the underlying filesystem error.",
         message
       )
     }
     nonisolated static let webpEncodingFailed = string(
       "screen-capture.webp-encoding-failed",
       defaultValue: "WebP encoding failed",
-      comment: "Error shown when Snapzy cannot encode a screenshot as WebP"
+      comment: "Error shown when LumiCue cannot encode a screenshot as WebP"
     )
     nonisolated static let couldNotCreateImageDestination = string(
       "screen-capture.could-not-create-image-destination",
       defaultValue: "Could not create the image destination",
-      comment: "Error shown when Snapzy cannot create an image writer for the screenshot"
+      comment: "Error shown when LumiCue cannot create an image writer for the screenshot"
     )
     nonisolated static let failedToWriteImageToDisk = string(
       "screen-capture.failed-to-write-image-to-disk",
       defaultValue: "Failed to write the image to disk",
-      comment: "Error shown when Snapzy fails while writing a screenshot to disk"
+      comment: "Error shown when LumiCue fails while writing a screenshot to disk"
     )
     nonisolated static func fileWriteVerificationFailed(_ fileName: String) -> String {
       format(
         "screen-capture.file-write-verification-failed",
         defaultValue: "File write verification failed for %@",
-        comment: "Error shown when Snapzy writes a screenshot file but cannot verify it afterward. %@ is the file name.",
+        comment: "Error shown when LumiCue writes a screenshot file but cannot verify it afterward. %@ is the file name.",
         fileName
       )
     }
@@ -6674,7 +6674,7 @@ enum L10n {
     nonisolated static let failedToCreateImageFromFrame = string(
       "screen-capture.failed-to-create-image-from-frame",
       defaultValue: "Failed to create an image from the captured frame",
-      comment: "Error shown when Snapzy cannot convert a captured stream frame into an image"
+      comment: "Error shown when LumiCue cannot convert a captured stream frame into an image"
     )
     nonisolated static let selectedWindowUnavailable = string(
       "screen-capture.selected-window-unavailable",
@@ -6743,7 +6743,7 @@ enum L10n {
     )
     static let qrTextOnlyUnsupported = string(
       "ocr.qr-text-only-unsupported",
-      defaultValue: "QR code detected, but Snapzy can only copy text-based QR content.",
+      defaultValue: "QR code detected, but LumiCue can only copy text-based QR content.",
       comment: "Warning shown when OCR capture detects a QR code whose content cannot be represented as text"
     )
     static func recognitionFailed(_ message: String) -> String {
@@ -6914,7 +6914,7 @@ enum L10n {
     )
     static let noSavableResultReady = string(
       "scrolling-capture-status.no-savable-result-ready",
-      defaultValue: "Snapzy couldn't lock a savable stitched image yet. You can keep capturing, try Done again, or Cancel.",
+      defaultValue: "LumiCue couldn't lock a savable stitched image yet. You can keep capturing, try Done again, or Cancel.",
       comment: "Status shown when Done is pressed before a savable stitched result exists"
     )
     static let savingStitchedImage = string(
@@ -6939,7 +6939,7 @@ enum L10n {
     )
     static let autoScrollNeedsAccessibility = string(
       "scrolling-capture-status.auto-scroll-needs-accessibility",
-      defaultValue: "Auto Scroll needs Accessibility permission. Enable Snapzy in System Settings > Privacy & Security > Accessibility.",
+      defaultValue: "Auto Scroll needs Accessibility permission. Enable LumiCue in System Settings > Privacy & Security > Accessibility.",
       comment: "Status shown when auto-scroll cannot start because Accessibility permission is missing"
     )
     static let autoScrollPausedMoveMouseInside = string(
@@ -6954,12 +6954,12 @@ enum L10n {
     )
     static let mixedDirectionsDetected = string(
       "scrolling-capture-status.mixed-directions-detected",
-      defaultValue: "Mixed scroll directions detected. Keep one direction so Snapzy can align.",
+      defaultValue: "Mixed scroll directions detected. Keep one direction so LumiCue can align.",
       comment: "Status shown when mixed scroll directions are detected during scrolling capture"
     )
     static let couldntCaptureLastFrame = string(
       "scrolling-capture-status.couldnt-capture-last-frame",
-      defaultValue: "Couldn't capture the last frame. Snapzy will save the current stitched result.",
+      defaultValue: "Couldn't capture the last frame. LumiCue will save the current stitched result.",
       comment: "Status shown when the final scrolling capture frame cannot be captured"
     )
     static let unableToCaptureArea = string(
@@ -6969,7 +6969,7 @@ enum L10n {
     )
     static let couldntRefreshLastFrame = string(
       "scrolling-capture-status.couldnt-refresh-last-frame",
-      defaultValue: "Couldn't refresh the last frame. Snapzy will save the current stitched result.",
+      defaultValue: "Couldn't refresh the last frame. LumiCue will save the current stitched result.",
       comment: "Status shown when the final scrolling capture refresh fails"
     )
     static let unableToRenderPreview = string(
@@ -7003,7 +7003,7 @@ enum L10n {
     )
     static let alignmentPaused = string(
       "scrolling-capture-status.alignment-paused",
-      defaultValue: "Alignment paused. Slow down and keep one direction so Snapzy can recover.",
+      defaultValue: "Alignment paused. Slow down and keep one direction so LumiCue can recover.",
       comment: "Status shown when scrolling capture pauses to recover alignment"
     )
     static let couldntAlignFrame = string(
@@ -7026,30 +7026,30 @@ enum L10n {
     )
     static let finalizingCurrentCapture = string(
       "scrolling-capture-status.finalizing-current-capture",
-      defaultValue: "Finalizing the current capture. Snapzy is locking the latest stitched result before saving.",
+      defaultValue: "Finalizing the current capture. LumiCue is locking the latest stitched result before saving.",
       comment: "Status shown when the scrolling capture result is being finalized"
     )
     static func finalizingFrames(_ count: Int) -> String {
       format(
         "scrolling-capture-status.finalizing-frames",
-        defaultValue: "Locking the current capture. Snapzy is sealing %d stitched frames before saving.",
+        defaultValue: "Locking the current capture. LumiCue is sealing %d stitched frames before saving.",
         comment: "Status shown while finalizing a scrolling capture with stitched frames. %d is the number of stitched frames.",
         count
       )
     }
     static let finalizingNoNewContent = string(
       "scrolling-capture-status.finalizing-no-new-content",
-      defaultValue: "No new content was detected. Snapzy is saving the current stitched result.",
+      defaultValue: "No new content was detected. LumiCue is saving the current stitched result.",
       comment: "Status shown while finalizing a scrolling capture after reaching the end of content"
     )
     static let finalizingCouldntAlignLastFrame = string(
       "scrolling-capture-status.finalizing-couldnt-align-last-frame",
-      defaultValue: "Couldn't align the last frame cleanly. Snapzy will save the current stitched result.",
+      defaultValue: "Couldn't align the last frame cleanly. LumiCue will save the current stitched result.",
       comment: "Status shown while finalizing when the last frame could not be aligned"
     )
     static let finalizingHeightLimitReached = string(
       "scrolling-capture-status.finalizing-height-limit-reached",
-      defaultValue: "Height limit reached. Snapzy is saving the current stitched result.",
+      defaultValue: "Height limit reached. LumiCue is saving the current stitched result.",
       comment: "Status shown while finalizing after the scrolling capture reaches the height limit"
     )
     static let readyHintToast = string(
@@ -7079,7 +7079,7 @@ enum L10n {
     static func outsideApplications(_ bundlePath: String) -> String {
       format(
         "app-identity.outside-applications",
-        defaultValue: "Install Snapzy in /Applications before granting permissions. Current path: %@",
+        defaultValue: "Install LumiCue in /Applications before granting permissions. Current path: %@",
         comment: "Identity issue message. %@ is the current app bundle path.",
         bundlePath
       )
@@ -7269,7 +7269,7 @@ enum L10n {
     )
     static let clearHistoryAlertMessage = string(
       "preferences-history.clear-history-alert-message",
-      defaultValue: "This will move all capture files to Trash and remove them from History. This action cannot be undone in Snapzy.",
+      defaultValue: "This will move all capture files to Trash and remove them from History. This action cannot be undone in LumiCue.",
       comment: "Alert message when clearing history"
     )
     static let clearHistoryConfirm = string(
@@ -7381,7 +7381,7 @@ enum L10n {
   enum WhatsNew {
     static let title = string(
       "whats-new.title",
-      defaultValue: "What's new in Snapzy",
+      defaultValue: "What's new in LumiCue",
       comment: "Welcome screen title"
     )
     static func desc(_ version: String) -> String {

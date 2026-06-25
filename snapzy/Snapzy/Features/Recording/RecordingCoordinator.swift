@@ -39,6 +39,9 @@ final class RecordingCoordinator: ObservableObject {
   private var keystrokeOverlayWindow: KeystrokeOverlayWindow?
   private var keystrokeMonitorService: KeystrokeMonitorService?
 
+  // Shotlit micro mirror overlay captured into recordings.
+  private var cameraBubbleWindow: CameraBubbleWindow?
+
   private struct ToolbarConfiguration {
     let format: VideoFormat
     let quality: VideoQuality
@@ -681,6 +684,9 @@ final class RecordingCoordinator: ObservableObject {
         // Setup keystroke overlay (must be after recording starts)
         setupKeystrokeOverlay(for: rect)
 
+        // Setup Shotlit micro mirror (must be after recording starts so it can be excepted)
+        setupCameraBubbleOverlay(for: rect)
+
         // Switch to status bar
         window.showRecordingStatusBar(recorder: recorder)
         finishRecordingStartAttempt()
@@ -797,6 +803,7 @@ final class RecordingCoordinator: ObservableObject {
           overlay.hideBorder()
           overlay.setInteractionEnabled(false)
         }
+        setupCameraBubbleOverlay(for: rect)
         window.showRecordingStatusBar(recorder: recorder)
         finishRecordingStartAttempt()
         DiagnosticLogger.shared.log(.info, .recording, "Microphone retry recording started")
@@ -1011,10 +1018,14 @@ final class RecordingCoordinator: ObservableObject {
       "hasAnnotationOverlay": "\(annotationOverlayWindow != nil)",
       "hasClickHighlight": "\(clickHighlightWindow != nil)",
       "hasKeystrokeOverlay": "\(keystrokeOverlayWindow != nil)",
+      "hasCameraBubble": "\(cameraBubbleWindow != nil)",
     ])
     finishRecordingStartAttempt()
     // Remove escape monitors
     removeEscapeMonitors()
+
+    // Close Shotlit micro mirror
+    cleanupCameraBubbleOverlay()
 
     // Close click highlight overlay
     cleanupClickHighlightOverlay()
@@ -1172,6 +1183,42 @@ final class RecordingCoordinator: ObservableObject {
     clickHighlightService = nil
     clickHighlightWindow?.close()
     clickHighlightWindow = nil
+  }
+
+  // MARK: - Shotlit Micro Mirror Overlay
+
+  private func setupCameraBubbleOverlay(for rect: CGRect) {
+    cleanupCameraBubbleOverlay()
+
+    let diameter = max(150, min(220, min(rect.width, rect.height) * 0.28))
+    let bubble = CameraBubbleWindow(diameter: diameter, shape: .heart)
+    positionCameraBubble(bubble, in: rect, diameter: diameter)
+    bubble.orderFrontRegardless()
+    cameraBubbleWindow = bubble
+
+    DiagnosticLogger.shared.log(.info, .recording, "Shotlit camera bubble overlay started", context: [
+      "windowID": "\(bubble.overlayWindowID)",
+      "diameter": "\(Int(diameter))",
+    ])
+
+    Task {
+      await recorder.addExceptedWindow(windowID: bubble.overlayWindowID)
+    }
+  }
+
+  private func positionCameraBubble(_ bubble: CameraBubbleWindow, in rect: CGRect, diameter: CGFloat) {
+    let margin: CGFloat = 24
+    let x = rect.maxX - diameter - margin
+    let y = rect.minY + margin
+    bubble.setFrameOrigin(NSPoint(x: max(rect.minX + margin, x), y: y))
+  }
+
+  private func cleanupCameraBubbleOverlay() {
+    if cameraBubbleWindow != nil {
+      DiagnosticLogger.shared.log(.debug, .recording, "Shotlit camera bubble overlay cleanup")
+    }
+    cameraBubbleWindow?.close()
+    cameraBubbleWindow = nil
   }
 
   // MARK: - Keystroke Overlay

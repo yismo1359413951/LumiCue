@@ -972,6 +972,7 @@ final class TeleprompterWindow: NSWindow {
     // 拖动进度条 → 字幕跳到对应进度位置
     journeyBar.onSeek = { [weak self] p in
       guard let self else { return }
+      self.pauseForSeek()   // 拖动定位时自动暂停, 不被自动滚动抢
       self.linesView.scrollOffset = p * self.linesView.resetAt
       self.linesView.updateDepth()
       self.updateJourney()
@@ -1362,6 +1363,14 @@ final class TeleprompterWindow: NSWindow {
   }
 
   // MARK: - 控制条 actions
+
+  /// 拖动进度条时自动暂停滚动(只暂停, 不弹救场面板)。
+  private func pauseForSeek() {
+    guard playing else { return }
+    playing = false
+    playPauseButton?.attributedTitle = Self.barTitle("▶")
+    pillPlay?.attributedTitle = Self.barTitle("▶")
+  }
 
   @objc private func togglePlay() {
     playing.toggle()

@@ -13,3 +13,6 @@
 - 🔴 编译铁律:perl注释摄像头(CameraBubbleWindow)+chmod 444锁文件防还原器,编译后git checkout还原;否则开摄像头/编译被破坏。entitlements在 snapzy/Snapzy/Snapzy.entitlements。
 - 🔴 打包.app成品流程:cp Debug产物→改Info.plist(plutil/PlistBuddy改CFBundleName+CFBundleDisplayName,删CFBundleIconName加CFBundleIconFile)→换AppIcon.icns(iconutil从iconset)→codesign --force --deep --sign -(用绝对路径entitlements)→xattr -cr→首次右键打开绕Gatekeeper。
 - 🔴 需求发散时当顾问帮收敛(列剩余+建议先出能用成品),但别引导用户跳过她明确要的功能。
+
+## 2026-06-26 用户纠正:绝不自动打开提词器app
+- 🔴 用户在工作时,我每次打包后自动 `open` 启动提词器=弹窗打扰她工作。**以后改完只 commit+文字告诉她,要验证她自己点。绝不自动 open/启动 LumiCue。** 验证用导出PNG/NSLog/读文件,不启动GUI。

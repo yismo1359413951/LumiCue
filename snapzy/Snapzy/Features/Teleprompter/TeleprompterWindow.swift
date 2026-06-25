@@ -1046,7 +1046,9 @@ final class TeleprompterWindow: NSWindow {
     journeyBar.isHidden = c
     fxView.isHidden = c
     resizeHandle.isHidden = c
-    if c { editScroll.isHidden = true; rescuePanel.isHidden = true }
+    if c { editScroll.isHidden = true }
+    rescuePanel.isHidden = playing || editing   // 收起/展开都按暂停状态显示救场面板(一致)
+    raiseRescueIfVisible()
   }
 
   /// 逐帧平滑动画(每步 setFrame + 重排, 收展时内容跟着丝滑变)。
@@ -1097,6 +1099,10 @@ final class TeleprompterWindow: NSWindow {
       linesView.frame = NSRect(x: 12, y: 11, width: max(20, w - 24), height: h - bh - 18)
       let cf: CGFloat = 18                                   // 收起态固定小字(不随宽度变大)
       if abs(linesView.fontSize - cf) > 0.5 { linesView.fontSize = cf }
+      let rpW = min(w - 20, 330), rpH: CGFloat = 30          // 收起态救场面板: 底部居中
+      rescuePanel.frame = NSRect(x: (w - rpW) / 2, y: 8, width: rpW, height: rpH)
+      rescueStack.frame = rescuePanel.bounds.insetBy(dx: 6, dy: 4)
+      raiseRescueIfVisible()
       updateJourney()
       return
     }
@@ -1296,8 +1302,15 @@ final class TeleprompterWindow: NSWindow {
     playing.toggle()
     playPauseButton.attributedTitle = Self.barTitle(playing ? "⏸" : "▶")
     pillPlay?.attributedTitle = Self.barTitle(playing ? "⏸" : "▶")
-    rescuePanel.isHidden = playing || editing || collapsed   // 收起态不弹救场面板
+    rescuePanel.isHidden = playing || editing   // 暂停就弹救场面板(收起态也一致)
+    raiseRescueIfVisible()
     if !playing { retreatCount = 0; retreatButton.title = "← 退1句" }
+  }
+
+  /// 救场面板显示时提到最上层(否则收起态 pillView 覆盖在上面, 会拦掉三个按钮的点击)。
+  private func raiseRescueIfVisible() {
+    guard let rp = rescuePanel, !rp.isHidden else { return }
+    rp.superview?.addSubview(rp, positioned: .above, relativeTo: nil)
   }
 
   @objc private func toggleEdit() {

@@ -144,8 +144,10 @@ private final class LinesView: NSView {
     let emptyGap = fontSize * 0.7
     var cursor: CGFloat = 0
 
-    for raw in script.components(separatedBy: "\n") {
-      if raw.trimmingCharacters(in: .whitespaces).isEmpty { cursor += emptyGap + lineGap; continue }
+    for raw0 in script.components(separatedBy: "\n") {
+      // 显示层强制去格式: 删行内所有空格(含全角)+跳过空行 → 一个字挨一个字, 路径无关
+      let raw = String(raw0.unicodeScalars.filter { !CharacterSet.whitespaces.contains($0) })
+      if raw.isEmpty { continue }
       let attrs: [NSAttributedString.Key: Any] = [.font: curFont, .paragraphStyle: curPara]
       let bounding = (raw as NSString).boundingRect(
         with: NSSize(width: wrapWidth, height: .greatestFiniteMagnitude),

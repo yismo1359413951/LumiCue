@@ -1,0 +1,27 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+  html,body{margin:0;padding:0;background:transparent}
+  .icon{width:1024px;height:1024px;border-radius:230px;position:relative;overflow:hidden;
+    background:radial-gradient(130% 130% at 50% 0%, #1a2030 0%, #0a0d15 60%, #05070c 100%);
+    box-shadow:inset 0 6px 0 rgba(255,255,255,.10)}
+  /* 黑玻璃灵动岛, 发光环 */
+  .pill{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:720px;height:300px;border-radius:150px;
+    background:linear-gradient(180deg,#1a2030,#0a0d15);
+    box-shadow:0 30px 70px rgba(0,0,0,.55), inset 0 3px 0 rgba(255,255,255,.14),
+      0 0 0 6px rgba(94,234,212,.0);
+    display:flex;align-items:center;justify-content:center}
+  .ring{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:720px;height:300px;border-radius:150px;padding:7px;
+    background:linear-gradient(120deg,#22d3ee,#818cf8 50%,#c084fc);
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;
+    box-shadow:0 0 70px 6px rgba(94,234,212,.45)}
+  .line{width:430px;height:74px;border-radius:40px;
+    background:linear-gradient(90deg,#22d3ee,#a78bfa);
+    box-shadow:0 0 70px 14px rgba(94,234,212,.6),0 0 120px 30px rgba(167,139,250,.4)}
+</style></head><body>
+<div class="icon">
+  <div class="pill"><div class="line"></div></div>
+  <div class="ring"></div>
+</div>
+</body></html>

@@ -1,24 +1,11 @@
 <div align="center">
-  <img src="./banner.png" width="200" height="200" alt="Snapzy banner" />
+  <img src="./poster.png" width="400" alt="LumiCue poster" />
 
-  <h1>Snapzy</h1>
-  <p><strong>Native macOS screenshots, recording, annotation, and editing from the menu bar.</strong></p>
-
-  <p>
-    <a href="https://trendshift.io/repositories/24550" target="_blank"><img src="https://trendshift.io/api/badge/repositories/24550" alt="duongductrong%2FSnapzy | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
-  </p>
-
-  <p>
-    Built with <a href="https://developer.apple.com/xcode/swiftui/">SwiftUI</a>,
-    <a href="https://developer.apple.com/documentation/appkit">AppKit</a>,
-    <a href="https://developer.apple.com/documentation/screencapturekit">ScreenCaptureKit</a>,
-    <a href="https://developer.apple.com/documentation/vision">Vision</a>, and
-    <a href="https://sparkle-project.org/">Sparkle</a>.
-  </p>
+  <h1>🎤 LumiCue</h1>
+  <p><strong>A lightweight floating teleprompter built exclusively for macOS — invisible to your audience, visible only to you.</strong></p>
 
   <p>
     <a href="./README.md">🇺🇸 English</a> •
-    <a href="./README.vi.md">🇻🇳 Tiếng Việt</a> •
     <a href="./README.zh-CN.md">🇨🇳 简体中文</a>
   </p>
 
@@ -26,223 +13,132 @@
     <a href="#features">Features</a> •
     <a href="#install">Install</a> •
     <a href="#shortcuts">Shortcuts</a> •
-    <a href="#development">Development</a> •
-    <a href="#documentation">Documentation</a> •
-    <a href="#community">Community</a> •
-    <a href="#security">Security</a> •
+    <a href="#known-issues">Known Issues</a> •
     <a href="#contributing">Contributing</a> •
-    <a href="#contributors">Contributors</a> •
+    <a href="#license">License</a> •
     <a href="#acknowledgments">Acknowledgments</a>
-  </p>
-
-  <p>
-    <a href="https://github.com/duongductrong/Snapzy/stargazers"><img alt="GitHub Stars" src="https://img.shields.io/github/stars/duongductrong/Snapzy?style=flat&amp;logo=github" /></a>
-    <a href="https://github.com/duongductrong/Snapzy/network/members"><img alt="GitHub Forks" src="https://img.shields.io/github/forks/duongductrong/Snapzy?style=flat&amp;logo=github" /></a>
-    <a href="https://github.com/duongductrong/Snapzy/releases"><img alt="GitHub Downloads" src="https://img.shields.io/github/downloads/duongductrong/Snapzy/total?style=flat&amp;logo=github" /></a>
-  </p>
-  <p>
-    <a href="https://deepwiki.com/duongductrong/Snapzy"><img alt="Ask DeepWiki" src="https://deepwiki.com/badge.svg" /></a>
-    <a href="https://discord.gg/xkWDAuJkZu"><img alt="Join Discord Community" src="https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=flat&amp;logo=discord&amp;logoColor=white" /></a>
-    <a href="#featured-on"><img alt="Featured On" src="https://img.shields.io/badge/Featured%20On-Product%20Hunt%20%2B%20Unikorn-111827?style=flat&amp;logo=producthunt&amp;logoColor=white" /></a>
-  </p>
-  <p>
-    <a href="https://github.com/sponsors/duongductrong"><img alt="GitHub Sponsors" src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-ff69b4?style=flat&amp;logo=github" /></a>
-    <a href="https://ko-fi.com/duongductrong"><img alt="Ko-fi Donate" src="https://img.shields.io/badge/Ko--fi-Donate-FF5E5B?style=flat&amp;logo=ko-fi&amp;logoColor=white" /></a>
   </p>
 </div>
 
+## What is LumiCue?
+
+LumiCue is a **floating teleprompter widget** for macOS. It sits on top of your screen while you present, record, or livestream — but thanks to `sharingType = .none`, **your audience never sees it**. Only you do.
+
+Born from [Snapzy](https://github.com/duongductrong/Snapzy) (an open-source CleanShot X alternative), LumiCue strips away all screenshot/recording features and becomes a single-purpose tool: **help you read your script effortlessly while looking natural on camera.**
+
+## Poster
+
+![LumiCue Poster](./poster.png)
+
 ## Features
 
-- **Screenshot**: fullscreen or selected-area capture with manual/application window mode toggle (`Application Capture`, default `A`), area capture with inline annotate (annotate before saving), scrolling capture with live stitched preview, OCR text extraction, transparent object cutout capture with optional safe auto-crop, window shadow capture (macOS 14+), multi-format export (PNG/JPG/WebP), hide desktop icons/widgets, quick screenshot during recording
-- **Screen Recording**: video or GIF output, system audio + microphone, mouse click highlights, keystroke overlays, live on-screen annotations, remember last area, GIF resizing, Smart Camera metadata for Follow Mouse edits
-- **Annotation Editor**: shapes, arrows, text, watermarks, filled rectangles, blur/pixelate, automatic local sensitive-data redaction, counters, crop, remove background with crop-aware auto-crop support, mockup backgrounds with 3D renderer, zoom/pan (pinch + keyboard), drag-to-app with optional keep-editing and editor reactivation behavior, configurable tool/action shortcuts
-- **After Capture Settings**: per-mode action matrix for save, Quick Access, clipboard copy, and annotate plus a separate global remove-background auto-crop toggle (enabled by default)
-- **Video Editor**: trim with visual timeline + frame strip, zoom segments with auto-focus (Follow Mouse), wallpaper backgrounds + padding, custom export dimensions, animated GIF viewer, undo/redo
-- **Quick Access**: floating panel after every capture with copy, edit, drag-to-app, two-finger swipe dismiss, open, and delete actions
-- **Capture History**: floating history panel + full browser for recent screenshots, videos, and GIFs with type/time filters, filename search, quick copy/open/delete actions, one-click reopen in Annotate or Video Editor, editable annotation restore for committed screenshot edits, configurable panel layout, and retention policies
-- **Shortcuts**: fully configurable global shortcuts for capture, recording, and annotation tools, with per-shortcut on/off control and system conflict detection
-- **Onboarding**: splash screen, first-run language selection, guided permissions setup, and shortcut configuration for first-time users
-- **Localization**: 🇺🇸 English, 🇻🇳 Vietnamese, 🇨🇳 Simplified Chinese, 🇹🇼 Traditional Chinese, 🇪🇸 Spanish, 🇯🇵 Japanese, 🇰🇷 Korean, 🇷🇺 Russian, 🇫🇷 French, and 🇩🇪 German app localization with native macOS per-app language support
-- **Cloud Upload**: privacy-first bring-your-own-storage via AWS S3 or Cloudflare R2 — no third-party servers, manual upload from Quick Access for screenshots, videos, and GIFs, or from Annotate for screenshots, credentials stored in the macOS Keychain with optional password protection, manual encrypted credential import/export for faster setup on another Mac, upload history, configurable auto-expiration (1–90 days or permanent), lifecycle rules, custom domain support
-- **Advanced Settings**: TOML export/import, one-time config folder grant, debounced background sync, safe sync-before-open, and launch-time auto-apply for portable preferences, dotfiles, backup, and machine-to-machine setup via `~/.config/snapzy/config.toml`
-- **Updates & Diagnostics**: in-app updates via Sparkle, problem reporting with diagnostic log bundles, cache management
-- **Platform**: menu-bar app, appearance theming (light/dark/system), App Sandbox with secure file-access bookmarks
+### 📺 Invisible Teleprompter
+- The window is **completely invisible to screen recordings, livestreams, and screenshots** (`sharingType = .none`)
+- You see it — your audience doesn't. Look straight at the camera and read naturally.
+
+### 🫧 Two Modes: Full & Collapsed
+- **Full mode**: Large resizable window with centered scrolling text, control bar, progress track, and rescue panel
+- **Pill mode (collapsed)**: A slim floating strip (2–3 lines of small text + mini controls) — drag it anywhere, keep it out of the way
+
+### 🎨 Beautiful & Playful UI
+- **Glassmorphism** frosted background with dynamic sky gradient (day → dusk → night as you progress)
+- **Animated rainbow border** (indigo → violet → pink gradient flow)
+- **Glowing progress bar** with a pulsing comet head
+- **12 text colors** from the Tailwind palette: White, Amber, Orange, Coral, Pink, Lavender, Indigo, Sky Blue, Cyan, Mint, Lime Green, Cream
+
+### 📝 Smart Script Input
+- **⌘V paste directly** — no buttons needed; paste your script and it appears instantly
+- **Import .txt files** via right-click menu
+- **Inline editor** with automatic whitespace cleanup (removes all spacing characters while preserving punctuation and line breaks)
+- Handles NBSP, zero-width spaces, fullwidth spaces, and other invisible Unicode characters
+
+### 🎵 Playback Controls
+- **Adjustable speed**: 0.1× to 2× (slow crawl to fast scroll)
+- **Font customization**: 12 built-in families + 6 preset sizes (S/M/L) + manual scale (A-/A+)
+- **Pause/Resume** with spacebar
+- **Seek bar**: drag the progress track to jump anywhere in your script
+- **Step back**: ↑ key or ⏪ button to go back one line
+
+### 🆘 Rescue Panel (when paused)
+- **↺ Restart current line** — re-read from the beginning
+- **← Back N lines** — go back 1, 2, 3… lines (keeps counting)
+- **▶ Resume** — continue scrolling
+
+### 🎤 Voice Following (Experimental)
+- Built-in on-device speech recognition (Chinese, local processing, no data upload)
+- The teleprompter follows your voice in real time — speak and the text scrolls with you
+
+### 🌐 Bilingual UI
+- **Chinese / English toggle** — switch all button labels with one click (default: Chinese)
+- Toggle button shows the *opposite* language: "EN" on Chinese UI, "中" on English UI
+
+### ⌨️ Keyboard Shortcuts
+- `Space` — Play / Pause
+- `↑` — Step back one line
+- `↓` — Step forward one line
+- `⌘V` — Paste script from clipboard
+
+### 🖥️ macOS Native
+- Built with SwiftUI + AppKit + Core Animation
+- Dark Aqua appearance with frosted glass
+- Movable by dragging anywhere on the window background
+- Resizable via bottom-right drag handle
+- Full Screen auxiliary window support
 
 ## Install
 
 > Requires **macOS 13.0** or later.
 
-### Homebrew
+### Build from Source
 
 ```bash
-brew tap duongductrong/snapzy https://github.com/duongductrong/Snapzy
-brew install --cask snapzy
+git clone https://github.com/yismo1359413951/LumiCue.git
+cd LumiCue
+open Snapzy.xcodeproj
 ```
 
-### Shell script
+1. Select the **Snapzy** scheme
+2. Build (⌘B) and Run (⌘R)
+3. The teleprompter window opens immediately — no menu bar icon, no status bar
 
-```bash
-# Install a specific version
-curl -fsSL https://raw.githubusercontent.com/duongductrong/Snapzy/v1.24.0/install.sh | bash
-```
-
-### Download a release
-
-1. Go to [Releases](https://github.com/duongductrong/Snapzy/releases)
-2. Download the latest packaged app asset, typically `Snapzy-v<version>.dmg`
-3. Move `Snapzy.app` to `/Applications`
-4. Launch Snapzy
-5. Grant Screen Recording permission when prompted in System Settings
-6. Re-launch Snapzy after granting Screen Recording if macOS asks for it
-7. Grant Microphone permission too if you want voice input in recordings
-
-**Note:** Snapzy is not notarized by Apple yet, so macOS may block it on first launch. After installing Snapzy to `/Applications`, run:
-
-```bash
-sudo xattr -rd com.apple.quarantine /Applications/Snapzy.app
-```
-
-Learn more in [Apple Support: Open a Mac app from an unidentified developer](https://support.apple.com/en-us/102445).
-
-## Uninstall
-
-To completely remove Snapzy, reset all permissions, and clean up app data:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/duongductrong/Snapzy/master/uninstall.sh | bash
-```
-
-Or if you cloned the repo:
-
-```bash
-./uninstall.sh
-```
-
-This will remove the app from `/Applications`, delete preferences and caches, and reset TCC permissions (Screen Recording, Microphone, Accessibility). You may need to log out or reboot for permission changes to fully take effect.
+> **Note**: The Xcode project keeps the internal bundle identifier `Snapzy` to preserve data compatibility. The app displays as **LumiCue** in all user-facing UI.
 
 ## Shortcuts
 
-| Action                                                  | Shortcut |
-| ------------------------------------------------------- | -------- |
-| Fullscreen screenshot                                   | `⇧⌘3`    |
-| Area screenshot                                         | `⇧⌘4`    |
-| ↳ Toggle manual/app window mode (`Application Capture`) | `A`      |
-| Area screenshot + inline annotate                       | `⇧⌘7`    |
-| Scrolling screenshot                                    | `⇧⌘6`    |
-| Screen recording                                        | `⇧⌘5`    |
-| OCR text capture                                        | `⇧⌘2`    |
-| Object cutout capture                                   | `⇧⌘1`    |
-| Smart element capture                                   | `⌥⇧4`    |
-| Open Annotate                                           | `⇧⌘A`    |
-| Open Video Editor                                       | `⇧⌘E`    |
-| Open Cloud Uploads                                      | `⇧⌘L`    |
-| Show shortcuts list                                     | `⇧⌘K`    |
+| Action | Shortcut |
+| ------ | -------- |
+| Play / Pause | `Space` |
+| Step back one line | `↑` |
+| Step forward one line | `↓` |
+| Paste script | `⌘V` |
 
-## Automation
+## Known Issues
 
-Snapzy registers the `snapzy://` URL scheme so launchers and automation tools can trigger capture actions.
+### 👻 Text Ghosting / Double Image
 
-| Action                | URL                               |
-| --------------------- | --------------------------------- |
-| Fullscreen screenshot | `snapzy://capture/fullscreen`     |
-| Area screenshot       | `snapzy://capture/area`           |
-| Application window    | `snapzy://capture/application`    |
-| Area annotate         | `snapzy://capture/area-annotate`  |
-| Scrolling screenshot  | `snapzy://capture/scrolling`      |
-| OCR text capture      | `snapzy://capture/ocr`            |
-| Smart element capture | `snapzy://capture/smart-element`  |
-| Object cutout capture | `snapzy://capture/object-cutout`  |
-| Screen recording      | `snapzy://record/screen`          |
-| Application recording | `snapzy://record/application`     |
-| Open Annotate         | `snapzy://open/annotate`          |
-| Open Video Editor     | `snapzy://open/video-editor`      |
-| Open Cloud Uploads    | `snapzy://open/cloud-uploads`     |
-| Open Capture History  | `snapzy://open/history`           |
-| Show shortcuts list   | `snapzy://show/shortcuts`         |
-| Open Settings         | `snapzy://settings`               |
-| Open Settings tab     | `snapzy://settings?tab=annotate`  |
+When the teleprompter is scrolling, some users may notice a **faint double-image or ghosting effect** on the text — especially at higher speeds or on external displays with lower refresh rates.
 
-## Development
+This is likely related to how `CATextLayer` compositing interacts with the `NSVisualEffectView` backdrop in the current rendering pipeline. The text layers may leave a subtle trail during rapid position updates.
 
-For local setup, source builds, and first-time development workflow, start with [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
-
-If you need archive, export, or DMG packaging commands, see [docs/BUILD.md](docs/BUILD.md). If you want the contribution workflow, see [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Documentation
-
-- [Ask DeepWiki (interactive docs assistant)](https://deepwiki.com/duongductrong/Snapzy)
-- [Docs map for humans and agents](docs/README.md)
-- [Project structure and runtime architecture](docs/STRUCTURE.md)
-- [Capture, recording, and editing flows](docs/CAPTURE.md)
-- [TOML configuration export/import](docs/CONFIGURATION.md)
-- [Build and packaging guide](docs/BUILD.md)
-- [Release and update workflow](docs/RELEASES.md)
-- [Local Sparkle update testing](docs/UPDATE_TESTING.md)
-
-## Community
-
-- Join the Snapzy Discord community for support, feedback, and discussion: [https://discord.gg/xkWDAuJkZu](https://discord.gg/xkWDAuJkZu)
-
-## Featured On
-
-<p>
-  <a href="https://www.producthunt.com/products/snapzy?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-snapzy" target="_blank" rel="noopener noreferrer"><img alt="Snapzy - Think CleanShot X, but open-source and developer-friendly | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1097629&amp;theme=light&amp;t=1773585048784"></a>
-  <a href="https://unikorn.vn/p/snapzy?ref=embed-snapzy" target="_blank"><img src="https://unikorn.vn/api/widgets/badge/snapzy?theme=light" alt="Snapzy trên Unikorn.vn" style="width: 250px; height: 54px;" width="250" height="54" /></a>
-</p>
-
-## Benchmark
-
-### OCR
-
-Benchmark date: April 19, 2026. Current OCR numbers come from `scripts/run-ocr-readme-benchmark.sh` on a clean synthetic wrapped UI/article-text corpus with `12 samples / language` across `10 supported languages`. `Character accuracy` is the primary signal, `exact match` is intentionally strict, and `no-output` on this corpus is `0%` for all languages below.
-
-| Language            | Character Accuracy | Exact Match |
-| ------------------- | -----------------: | ----------: |
-| English             |             100.0% |      100.0% |
-| Vietnamese          |             100.0% |      100.0% |
-| Simplified Chinese  |              99.3% |       75.0% |
-| Traditional Chinese |              99.0% |       66.7% |
-| Spanish             |              99.9% |       91.7% |
-| Japanese            |              99.4% |       66.7% |
-| Korean              |              99.7% |       83.3% |
-| Russian             |             100.0% |      100.0% |
-| French              |              99.3% |       33.3% |
-| German              |              99.8% |       75.0% |
-
-Real-world screenshots can score lower, especially with emoji, low-contrast footers, unusual punctuation, gradients, blur, or decorative fonts.
-
-## Security
-
-Snapzy runs inside the macOS App Sandbox with minimal entitlements. Network requests are limited to Sparkle update checks and user-initiated cloud uploads to **your own** S3/R2 bucket — no data is ever sent to third-party servers. Cloud credentials are stored exclusively in the macOS Keychain, can be further protected with an optional password (SHA-256 hashed, never stored in plaintext), and can only be transferred via a manual encrypted export/import flow protected by a user-supplied archive passphrase. Snapzy collects no telemetry.
-
-To report a vulnerability, please use a [GitHub Security Advisory](https://github.com/duongductrong/Snapzy/security/advisories/new) or contact the maintainer privately. See [SECURITY.md](SECURITY.md) for full details.
+**If you have ideas on how to fix this — PRs are very welcome!** Some directions worth exploring:
+- Reducing the `NSVisualEffectView` backdrop update frequency
+- Switching text rendering to `NSTextField` or `CALayer` with `drawsAsynchronously`
+- Adding frame-synchronized `CATransaction` flushing
+- Experimenting with `CVDisplayLink` for vsync-aligned scrolling
 
 ## Contributing
 
-Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+Contributions are welcome! Especially around the text ghosting issue and voice-following improvements.
 
-## Contributors
-
-Thanks to all the people who contribute to Snapzy!
-
-<a href="https://github.com/duongductrong/Snapzy/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=duongductrong/Snapzy" />
-</a>
-
-## Star History
-
-<a href="https://www.star-history.com/?repos=duongductrong%2FSnapzy&type=date&logscale=&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=duongductrong/Snapzy&type=date&theme=dark&logscale&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=duongductrong/Snapzy&type=date&logscale&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=duongductrong/Snapzy&type=date&logscale&legend=top-left" />
- </picture>
-</a>
-
-## Acknowledgments
-
-Snapzy is inspired by [CleanShot X](https://cleanshot.com/), an advanced screenshot and screen recording application for macOS.
+1. Fork the repo
+2. Create a feature branch
+3. Make your changes
+4. Open a PR with a clear description
 
 ## License
 
 BSD 3-Clause License. See [LICENSE](LICENSE).
+
+## Acknowledgments
+
+LumiCue is built on [Snapzy](https://github.com/duongductrong/Snapzy) by [duongductrong](https://github.com/duongductrong) — an incredible open-source screenshot and screen recording app for macOS. We stripped it down to its teleprompter soul and gave it a new identity. Thank you to all Snapzy contributors!

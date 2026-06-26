@@ -1,144 +1,142 @@
 <div align="center">
   <img src="./poster.png" width="400" alt="LumiCue poster" />
 
-  <h1>🎤 LumiCue</h1>
-  <p><strong>A lightweight floating teleprompter built exclusively for macOS — invisible to your audience, visible only to you.</strong></p>
+  <h1>🎤 LumiCue · 靓相 Shotlit</h1>
+  <p><strong>Your invisible floating teleprompter — a little window that only you can see, no one else.</strong></p>
 
   <p>
-    <a href="./README.md">🇺🇸 English</a> •
     <a href="./README.zh-CN.md">🇨🇳 简体中文</a>
   </p>
 
   <p>
-    <a href="#features">Features</a> •
-    <a href="#install">Install</a> •
-    <a href="#shortcuts">Shortcuts</a> •
-    <a href="#known-issues">Known Issues</a> •
-    <a href="#contributing">Contributing</a> •
-    <a href="#license">License</a> •
-    <a href="#acknowledgments">Acknowledgments</a>
+    ⚠️ <strong>macOS only.</strong> This is a beginner's fork of <a href="https://github.com/duongductrong/Snapzy">Snapzy</a> (BSD 3-Clause), stripped down into a single-purpose teleprompter.
   </p>
 </div>
 
-## What is LumiCue?
+---
 
-LumiCue is a **floating teleprompter widget** for macOS. It sits on top of your screen while you present, record, or livestream — but thanks to `sharingType = .none`, **your audience never sees it**. Only you do.
+## 🇬🇧 A note first
 
-Born from [Snapzy](https://github.com/duongductrong/Snapzy) (an open-source CleanShot X alternative), LumiCue strips away all screenshot/recording features and becomes a single-purpose tool: **help you read your script effortlessly while looking natural on camera.**
+I'm a beginner at vibe coding. This little tool is my homework — pieced together by asking AI, reading open-source code, and learning as I went.
 
-## Poster
+The story is simple: I needed a teleprompter that wouldn't show up in my recordings. I found Snapzy, an incredible open-source CleanShot X alternative with a built-in teleprompter. But it came with a full menu bar, screenshot tools, recording, annotation… all of which I didn't need. So I asked myself: what if I stripped *everything* away, kept only the teleprompter, and wrapped it in a little glass bubble that's invisible to everyone but me?
+
+That's LumiCue. It opens straight into a floating teleprompter window, and when you close it, the app quits. No menu bar, no status icon, no extra features — just a calm, pretty window that scrolls your script while you speak.
+
+It's far from perfect, and the code surely has rough edges. Corrections and PRs are very welcome — I'm still learning.
+
+---
+
+## ✨ Why "LumiCue" (靓相)
+
+"Lumi" from *luminous* — light, glow, something softly bright. "Cue" as in your next line, your prompt, your silent helper. The Chinese name 靓相 (liàng xiàng) means "beautiful presence" — a nod to the teleprompter being right there with you, invisible to your audience but making you look natural and prepared.
+
+It's not meant to be a serious tool. It's meant to be a little companion on your screen — something you can count on, that stays out of your way and makes you better on camera.
+
+---
+
+## 🖼️ Poster
 
 ![LumiCue Poster](./poster.png)
 
-## Features
+---
 
-### 📺 Invisible Teleprompter
-- The window is **completely invisible to screen recordings, livestreams, and screenshots** (`sharingType = .none`)
-- You see it — your audience doesn't. Look straight at the camera and read naturally.
+## 💜 What it looks like
 
-### 🫧 Two Modes: Full & Collapsed
-- **Full mode**: Large resizable window with centered scrolling text, control bar, progress track, and rescue panel
-- **Pill mode (collapsed)**: A slim floating strip (2–3 lines of small text + mini controls) — drag it anywhere, keep it out of the way
+- **Glassmorphism** frosted background — semi-transparent, your work shows through
+- **Animated rainbow border** — indigo → violet → pink, slowly flowing
+- **A glowing progress bar** with a pulsing comet head
+- **Dynamic sky** that shifts from day to dusk to night as you scroll through your script
+- **12 text colors** from the Tailwind palette — soft, readable, easy on the eyes
 
-### 🎨 Beautiful & Playful UI
-- **Glassmorphism** frosted background with dynamic sky gradient (day → dusk → night as you progress)
-- **Animated rainbow border** (indigo → violet → pink gradient flow)
-- **Glowing progress bar** with a pulsing comet head
-- **12 text colors** from the Tailwind palette: White, Amber, Orange, Coral, Pink, Lavender, Indigo, Sky Blue, Cyan, Mint, Lime Green, Cream
+---
 
-### 📝 Smart Script Input
-- **⌘V paste directly** — no buttons needed; paste your script and it appears instantly
-- **Import .txt files** via right-click menu
-- **Inline editor** with automatic whitespace cleanup (removes all spacing characters while preserving punctuation and line breaks)
-- Handles NBSP, zero-width spaces, fullwidth spaces, and other invisible Unicode characters
+## 🧩 What it can do
 
-### 🎵 Playback Controls
-- **Adjustable speed**: 0.1× to 2× (slow crawl to fast scroll)
-- **Font customization**: 12 built-in families + 6 preset sizes (S/M/L) + manual scale (A-/A+)
-- **Pause/Resume** with spacebar
-- **Seek bar**: drag the progress track to jump anywhere in your script
-- **Step back**: ↑ key or ⏪ button to go back one line
+### 📺 Invisible by design
+The window uses `sharingType = .none`. Your screen recordings, livestreams, and screenshots will never capture it. Only you see it.
 
-### 🆘 Rescue Panel (when paused)
-- **↺ Restart current line** — re-read from the beginning
-- **← Back N lines** — go back 1, 2, 3… lines (keeps counting)
-- **▶ Resume** — continue scrolling
+### 🫧 Two shapes: Full & Pill
+- **Full mode**: A resizable window with centered scrolling text, all controls, progress track, and a rescue panel
+- **Pill mode**: A slim floating strip (2–3 lines at a smaller size + mini controls) — drag it to the corner, keep it out of frame
 
-### 🎤 Voice Following (Experimental)
-- Built-in on-device speech recognition (Chinese, local processing, no data upload)
-- The teleprompter follows your voice in real time — speak and the text scrolls with you
+### 📝 Paste and go
+- `⌘V` your script — it appears instantly, no buttons needed
+- Import `.txt` files from the right-click menu
+- Built-in editor that strips all invisible spaces automatically (zero-width, fullwidth, NBSP… everything), keeps your punctuation and line breaks
 
-### 🌐 Bilingual UI
-- **Chinese / English toggle** — switch all button labels with one click (default: Chinese)
-- Toggle button shows the *opposite* language: "EN" on Chinese UI, "中" on English UI
+### 🎵 Playback
+- Speed from 0.1× (slow crawl) to 2× (fast scroll)
+- 12 system fonts + 3 preset window sizes (S/M/L) + manual font scaling (A-/A+)
+- Spacebar to pause and resume
+- Drag the progress bar to jump anywhere in your script
+- `↑` to step back one line when you get stuck
 
-### ⌨️ Keyboard Shortcuts
-- `Space` — Play / Pause
-- `↑` — Step back one line
-- `↓` — Step forward one line
-- `⌘V` — Paste script from clipboard
+### 🆘 Rescue panel
+Pops up automatically when you pause, in both modes:
+- **↺ Restart** the current line from the beginning
+- **← Back N lines** — go back 1, 2, 3… and counting
+- **▶ Resume** scrolling
 
-### 🖥️ macOS Native
-- Built with SwiftUI + AppKit + Core Animation
-- Dark Aqua appearance with frosted glass
-- Movable by dragging anywhere on the window background
-- Resizable via bottom-right drag handle
-- Full Screen auxiliary window support
+### 🎤 Voice following (experimental)
+Built-in on-device speech recognition in Chinese — no data leaves your machine. The teleprompter follows your voice in real time. It's rough around the edges, but it works.
 
-## Install
+### 🌐 CN / EN toggle
+One button switches all labels between Chinese and English. The button shows the *other* language — "EN" on the Chinese UI, "中" on the English one.
+
+---
+
+## ⌨️ Shortcuts
+
+| Action | Key |
+| ------ | --- |
+| Play / Pause | `Space` |
+| Step back one line | `↑` |
+| Step forward one line | `↓` |
+| Paste script | `⌘V` |
+
+---
+
+## 🔧 Build
 
 > Requires **macOS 13.0** or later.
 
-### Build from Source
-
 ```bash
-git clone https://github.com/yismo1359413951/LumiCue.git
+git clone <this-repo-url>
 cd LumiCue
 open Snapzy.xcodeproj
 ```
 
 1. Select the **Snapzy** scheme
 2. Build (⌘B) and Run (⌘R)
-3. The teleprompter window opens immediately — no menu bar icon, no status bar
+3. The teleprompter window opens — that's it
 
-> **Note**: The Xcode project keeps the internal bundle identifier `Snapzy` to preserve data compatibility. The app displays as **LumiCue** in all user-facing UI.
+> The Xcode project keeps the internal bundle `Snapzy` for data compatibility. All user-facing UI says **LumiCue**.
 
-## Shortcuts
+---
 
-| Action | Shortcut |
-| ------ | -------- |
-| Play / Pause | `Space` |
-| Step back one line | `↑` |
-| Step forward one line | `↓` |
-| Paste script | `⌘V` |
+## 👻 Known issue: text ghosting
 
-## Known Issues
+When scrolling, you may notice a faint double-image or ghosting on the text — more visible at high speeds or on lower-refresh external displays.
 
-### 👻 Text Ghosting / Double Image
+This is likely `CATextLayer` compositing interacting badly with the frosted-glass `NSVisualEffectView` backdrop. The text layers seem to leave a subtle trail during rapid position updates.
 
-When the teleprompter is scrolling, some users may notice a **faint double-image or ghosting effect** on the text — especially at higher speeds or on external displays with lower refresh rates.
+**PRs are very welcome!** Some directions to explore:
+- Lower the backdrop update frequency
+- Switch to `NSTextField` or `CALayer` with `drawsAsynchronously`
+- Frame-synchronized `CATransaction` flushing
+- `CVDisplayLink`-aligned scrolling
 
-This is likely related to how `CATextLayer` compositing interacts with the `NSVisualEffectView` backdrop in the current rendering pipeline. The text layers may leave a subtle trail during rapid position updates.
+---
 
-**If you have ideas on how to fix this — PRs are very welcome!** Some directions worth exploring:
-- Reducing the `NSVisualEffectView` backdrop update frequency
-- Switching text rendering to `NSTextField` or `CALayer` with `drawsAsynchronously`
-- Adding frame-synchronized `CATransaction` flushing
-- Experimenting with `CVDisplayLink` for vsync-aligned scrolling
+## 🙏 Credits
 
-## Contributing
+LumiCue is forked from **[Snapzy](https://github.com/duongductrong/Snapzy)** by [duongductrong](https://github.com/duongductrong) — a brilliant open-source screenshot & screen recording app for macOS. I took its teleprompter, stripped everything else away, and wrapped it in a new look. All original Snapzy copyright and attribution are retained.
 
-Contributions are welcome! Especially around the text ghosting issue and voice-following improvements.
+Thank you to everyone who contributed to Snapzy — without you, a beginner like me would never have had anything to start from.
 
-1. Fork the repo
-2. Create a feature branch
-3. Make your changes
-4. Open a PR with a clear description
+---
 
-## License
+## 📄 License
 
-BSD 3-Clause License. See [LICENSE](LICENSE).
-
-## Acknowledgments
-
-LumiCue is built on [Snapzy](https://github.com/duongductrong/Snapzy) by [duongductrong](https://github.com/duongductrong) — an incredible open-source screenshot and screen recording app for macOS. We stripped it down to its teleprompter soul and gave it a new identity. Thank you to all Snapzy contributors!
+BSD 3-Clause License, inherited from upstream Snapzy. See [LICENSE](LICENSE).

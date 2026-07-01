@@ -2,14 +2,14 @@
   <img src="./assets/lumi-logo.png" width="128" height="128" alt="LumiCue logo" />
 
   <h1>LumiCue · 灵光提示</h1>
-  <p><strong>Your invisible floating teleprompter — a little window that only you can see, no one else.</strong></p>
+  <p><strong>An invisible teleprompter — a floating glass window that only you can see.</strong></p>
 
   <p>
     <a href="./README.zh-CN.md">🇨🇳 简体中文</a>
   </p>
 
   <p>
-    ⚠️ <strong>macOS only.</strong> This is a beginner's fork of <a href="https://github.com/duongductrong/Snapzy">Snapzy</a> (BSD 3-Clause), stripped down into a single-purpose teleprompter.
+    ⚠️ <strong>macOS only.</strong>
   </p>
 </div>
 
@@ -17,11 +17,16 @@
 
 ## About
 
-LumiCue is a tiny macOS teleprompter born out of a simple need: I record videos and I need a script scrolling in front of me — but I don't want the audience to see it. I found Snapzy, an incredible open-source CleanShot X alternative, which had a teleprompter inside. But it also came with a menu bar, screenshot tools, screen recording, annotation… I stripped everything away and kept only the teleprompter.
+LumiCue is a tiny teleprompter for when you're on camera. You're recording a video or livestreaming — you have a script, but you don't want the audience to see it. LumiCue floats as a semi-transparent glass bubble above your screen. You read from it. They never know.
 
-It opens straight into a floating window. Close it, the app quits. No menu bar, no status icon — just a glassmorphism bubble that scrolls your script while you look at the camera.
+Close the window, the app quits. No menu bar clutter. No status icon. Just a quiet, polished little window that scrolls your words while you look at the lens.
 
-The Chinese name 灵光提示 (líng guāng tí shì) means "a flash of inspiration" or "spark of a cue" — that moment when the right word lights up just as you need it.
+---
+
+## ✅ Latest update: v1.24.1
+
+- **Presentation-safe floating window** — LumiCue now stays above full-screen PowerPoint / presentation spaces, so your cue window does not disappear behind your slides.
+- **Draggable pill progress** — when the window is collapsed into Pill mode, the mini progress bar can now be clicked and dragged too. It jumps through the script just like the full-size progress bar.
 
 ---
 
@@ -29,7 +34,7 @@ The Chinese name 灵光提示 (líng guāng tí shì) means "a flash of inspirat
 
 **Lumi** from *luminous* — a soft glow above your screen. **Cue** as in your next line, your silent helper.
 
-Not a serious tool. A little companion on your screen — something you can count on, that stays out of your way and makes you better on camera.
+The Chinese name 灵光提示 (líng guāng tí shì) means "a spark of a cue" — the right word lighting up the moment you need it.
 
 ---
 
@@ -41,46 +46,52 @@ Not a serious tool. A little companion on your screen — something you can coun
 
 ## 💜 What it looks like
 
-- **Glassmorphism** frosted background — semi-transparent, your work shows through
-- **Animated rainbow border** — indigo → violet → pink, slowly flowing
-- **A glowing progress bar** with a pulsing comet head
-- **Dynamic sky** that shifts from day to dusk to night as you scroll through your script
-- **12 Tailwind text colors** — soft, readable, easy on the eyes
+- **Glassmorphism** — a frosted, semi-transparent backdrop; your desktop or video preview shows through, but the text stays crisp
+- **Animated rainbow border** — indigo → violet → pink, gently flowing around the edges
+- **A glowing progress bar** with a pulsing comet head that races ahead as you speak
+- **Dynamic sky** — the background shifts from day → dusk → night as you progress through your script
+- **12 soft text colors** — readable, easy on the eyes, never harsh
 
 ---
 
 ## 🧩 What it can do
 
 ### 📺 Invisible by design
-The window uses `sharingType = .none`. Your screen recordings, livestreams, and screenshots will **never** capture it. Only you see it.
+The window is never captured in screen recordings, livestreams, or screenshots. Your audience sees nothing. Only you do.
+
+It is also tuned for full-screen presentations: keep your slides full-screen, and LumiCue can stay floating above them for your eyes only.
 
 ### 🫧 Two shapes: Full & Pill
-- **Full mode**: A resizable window with centered scrolling text, all controls, progress track, and a rescue panel
-- **Pill mode**: A slim floating strip (2–3 lines at a smaller size + mini controls) — drag it to the corner, keep it out of frame
+- **Full mode** — a resizable window with centered scrolling text, full controls, a progress track, and a rescue panel
+- **Pill mode** — a slim floating strip (2–3 lines, smaller text + mini controls + draggable mini progress). Drag it to a corner, keep it out of your frame
+
+### 🎚️ Drag to resize
+Grab the bottom-right corner of the window and drag — the window scales freely, and the text size adapts with it.
+
+### 🎨 Font style & color at your fingertips
+- 12 system fonts to switch between
+- 12 text colors — tap to cycle, each change applies instantly
+- Font size fine-tuning (A− / A+) independent of window size
+
+### 📜 Scroll by hand
+Drag the progress bar to jump to any spot in your script. This works in both Full mode and Pill mode, so you do not need to expand the window just to scrub through your script.
+
+### ↩️ Rewind on the spot
+Pause anytime — a rescue panel pops up:
+- **↺ Restart** the current line from the top
+- **← Back N lines** — 1, 2, 3… keeps counting
+- **▶ Resume** scrolling right where you need to be
 
 ### 📝 Paste and go
-- `⌘V` your script — it appears instantly
+- `⌘V` your script — it shows up instantly
 - Import `.txt` files from the right-click menu
-- Built-in editor that strips all invisible spaces automatically (zero-width, fullwidth, NBSP… everything), keeps punctuation and line breaks
-
-### 🎵 Playback
-- Speed 0.1× to 2×
-- 12 system fonts + 3 preset window sizes (S/M/L) + manual font scaling (A-/A+)
-- Spacebar to pause/resume
-- Drag the progress bar to jump anywhere in your script
-- `↑` to step back one line
-
-### 🆘 Rescue panel
-Pops up when you pause (both modes):
-- **↺ Restart** the current line from the beginning
-- **← Back N lines** — go back 1, 2, 3… and counting
-- **▶ Resume** scrolling
+- Auto-strips invisible spaces (zero-width, fullwidth, NBSP…) — keeps punctuation and line breaks intact
 
 ### 🎤 Voice following (experimental)
-Built-in on-device speech recognition in Chinese — no data leaves your machine. Speak, and the text follows.
+Built-in on-device speech recognition — your words stay on your machine. Speak, and the text follows along.
 
 ### 🌐 CN / EN toggle
-One button switches all labels between Chinese and English. The button shows the *other* language — "EN" on the Chinese UI, "中" on the English one.
+One button switches all control labels between Chinese and English. The button shows the *other* language — "EN" on the Chinese UI, "中" on the English one.
 
 ---
 
@@ -109,7 +120,7 @@ open Snapzy.xcodeproj
 2. Build (⌘B) and Run (⌘R)
 3. The teleprompter window opens — that's it
 
-> The Xcode project keeps the internal bundle `Snapzy` for data compatibility. User-facing UI says **LumiCue**.
+> Why does Xcode still say **Snapzy**? LumiCue started as a focused fork of Snapzy, and the internal Xcode project / scheme still keeps that name for now. The `snapzy/` folder is the actual app source, not a leftover file. Do not delete it unless you are intentionally renaming the whole project.
 
 ---
 
@@ -117,9 +128,9 @@ open Snapzy.xcodeproj
 
 When scrolling, you may notice a faint double-image or ghosting on the text — more visible at high speeds or on lower-refresh external displays.
 
-Likely `CATextLayer` compositing interacting badly with the frosted-glass `NSVisualEffectView` backdrop.
+Likely `CATextLayer` compositing interacting with the frosted-glass `NSVisualEffectView` backdrop.
 
-**PRs are very welcome!** Some directions to explore:
+**PRs welcome!** Some directions to explore:
 - Lower the backdrop update frequency
 - Switch to `NSTextField` or `CALayer` with `drawsAsynchronously`
 - Frame-synchronized `CATransaction` flushing
@@ -129,10 +140,10 @@ Likely `CATextLayer` compositing interacting badly with the frosted-glass `NSVis
 
 ## 🙏 Credits
 
-LumiCue is forked from **[Snapzy](https://github.com/duongductrong/Snapzy)** by [duongductrong](https://github.com/duongductrong) — a brilliant open-source screenshot & screen recording app for macOS. All original copyright and attribution are retained.
+LumiCue is a focused teleprompter fork of **[Snapzy](https://github.com/duongductrong/Snapzy)** by [duongductrong](https://github.com/duongductrong). Original copyright and BSD 3-Clause notices are retained.
 
 ---
 
 ## 📄 License
 
-BSD 3-Clause License, inherited from upstream Snapzy. See [LICENSE](LICENSE).
+BSD 3-Clause License. See [LICENSE](LICENSE).

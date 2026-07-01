@@ -671,6 +671,8 @@ final class TeleprompterWindow: NSWindow {
   private var playing = true
   private var editing = false
   private var didRunLaunchClipboardProbe = false
+  private var activeSpaceObserver: NSObjectProtocol?
+  private var appActivationObserver: NSObjectProtocol?
   private var isEnglish = false           // 界面语言: false=中文 / true=英文, 默认中文
   private var langButton: NSButton!       // 「EN ⇄ 中」语言切换钮
   private var rescueRestartBtn: NSButton! // 救场面板: 重念这句
@@ -731,8 +733,7 @@ final class TeleprompterWindow: NSWindow {
     isOpaque = false
     backgroundColor = .clear
     hasShadow = true
-    level = NSWindow.Level(rawValue: NSWindow.Level.floating.rawValue + 1)
-    collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+    configurePresentationOverlayBehavior()
     isMovableByWindowBackground = true
 
     contentView?.wantsLayer = true
@@ -801,6 +802,7 @@ final class TeleprompterWindow: NSWindow {
     setupColoredBorder()                     // 彩色流光描边(最上层叠加, 不挡点击)
     layoutContents()
     startScrolling()
+    observePresentationSpaceChanges()
   }
 
   // MARK: - 自由拖拽改大小
@@ -1201,12 +1203,50 @@ final class TeleprompterWindow: NSWindow {
       let f = screen.visibleFrame
       setFrameOrigin(NSPoint(x: f.midX - frame.width / 2, y: f.maxY - frame.height - 16))
     }
-    orderFrontRegardless()
+    refreshPresentationOverlayOrder()
     maybeAutopasteClipboardForDebugVerification()
     maybeRunEditPasteProbe()
   }
 
   var overlayWindowID: CGWindowID { CGWindowID(windowNumber) }
+
+  private func configurePresentationOverlayBehavior() {
+    level = .screenSaver
+    collectionBehavior = [
+      .canJoinAllSpaces,
+      .fullScreenAuxiliary,
+      .stationary,
+      .ignoresCycle,
+    ]
+    animationBehavior = .none
+  }
+
+  private func observePresentationSpaceChanges() {
+    activeSpaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
+      forName: NSWorkspace.activeSpaceDidChangeNotification,
+      object: nil,
+      queue: .main
+    ) { [weak self] _ in
+      Task { @MainActor [weak self] in
+        self?.refreshPresentationOverlayOrder()
+      }
+    }
+
+    appActivationObserver = NotificationCenter.default.addObserver(
+      forName: NSApplication.didBecomeActiveNotification,
+      object: NSApp,
+      queue: .main
+    ) { [weak self] _ in
+      Task { @MainActor [weak self] in
+        self?.refreshPresentationOverlayOrder()
+      }
+    }
+  }
+
+  private func refreshPresentationOverlayOrder() {
+    configurePresentationOverlayBehavior()
+    orderFrontRegardless()
+  }
 
   // MARK: - 滚动 + 游戏循环
 

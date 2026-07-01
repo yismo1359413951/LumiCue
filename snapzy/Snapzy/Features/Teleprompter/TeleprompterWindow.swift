@@ -577,14 +577,14 @@ private final class BarButton: NSButton {
 @MainActor
 private final class SeekBarView: NSView {
   var onSeek: ((CGFloat) -> Void)?     // 回调进度 0...1
-  var horizontalPadding: CGFloat = 18  // 与可视进度条左右留白一致
+  private let hPad: CGFloat = 18       // 与 trackLayer 左右留白一致
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
   override func mouseDown(with e: NSEvent) { seek(e) }
   override func mouseDragged(with e: NSEvent) { seek(e) }
   override func resetCursorRects() { addCursorRect(bounds, cursor: .pointingHand) }
   private func seek(_ e: NSEvent) {
     let x = convert(e.locationInWindow, from: nil).x
-    let p = max(0, min(1, (x - horizontalPadding) / max(1, bounds.width - horizontalPadding * 2)))
+    let p = max(0, min(1, (x - hPad) / max(1, bounds.width - hPad * 2)))
     onSeek?(p)
   }
 }
@@ -656,7 +656,6 @@ final class TeleprompterWindow: NSWindow {
   private var pillExpand: NSButton!
   private let pillTrack = CALayer()
   private let pillFill = CAGradientLayer()
-  private let pillSeekBar = SeekBarView()
   private var animTimer: Timer?
   private var voiceButton: NSButton!        // 🎤 语音跟随开关
   private let voiceFollower = VoiceFollower()
@@ -672,8 +671,6 @@ final class TeleprompterWindow: NSWindow {
   private var playing = true
   private var editing = false
   private var didRunLaunchClipboardProbe = false
-  private var activeSpaceObserver: NSObjectProtocol?
-  private var appActivationObserver: NSObjectProtocol?
   private var isEnglish = false           // 界面语言: false=中文 / true=英文, 默认中文
   private var langButton: NSButton!       // 「EN ⇄ 中」语言切换钮
   private var rescueRestartBtn: NSButton! // 救场面板: 重念这句
@@ -734,7 +731,8 @@ final class TeleprompterWindow: NSWindow {
     isOpaque = false
     backgroundColor = .clear
     hasShadow = true
-    configurePresentationOverlayBehavior()
+    level = NSWindow.Level(rawValue: NSWindow.Level.floating.rawValue + 1)
+    collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
     isMovableByWindowBackground = true
 
     contentView?.wantsLayer = true
@@ -803,7 +801,6 @@ final class TeleprompterWindow: NSWindow {
     setupColoredBorder()                     // 彩色流光描边(最上层叠加, 不挡点击)
     layoutContents()
     startScrolling()
-    observePresentationSpaceChanges()
   }
 
   // MARK: - 自由拖拽改大小
@@ -974,7 +971,11 @@ final class TeleprompterWindow: NSWindow {
     contentView?.addSubview(journeyBar)
     // 拖动进度条 → 字幕跳到对应进度位置
     journeyBar.onSeek = { [weak self] p in
-      self?.seekToProgress(p)
+      guard let self else { return }
+      self.pauseForSeek()   // 拖动定位时自动暂停, 不被自动滚动抢
+      self.linesView.scrollOffset = p * self.linesView.resetAt
+      self.linesView.updateDepth()
+      self.updateJourney()
     }
     updateSpeedLabel()
   }
@@ -1082,11 +1083,8 @@ final class TeleprompterWindow: NSWindow {
                        NSColor(srgbRed: 0.85, green: 0.27, blue: 0.94, alpha: 1).cgColor]
     pillFill.startPoint = CGPoint(x: 0, y: 0.5); pillFill.endPoint = CGPoint(x: 1, y: 0.5)
     pillFill.cornerRadius = 1.5
-    pillSeekBar.horizontalPadding = 12
-    pillSeekBar.onSeek = { [weak self] p in self?.seekToProgress(p) }
     pillView.layer?.addSublayer(pillTrack)
     pillView.layer?.addSublayer(pillFill)
-    pillView.addSubview(pillSeekBar)
     pillView.addSubview(pillBar)
     contentView?.addSubview(pillView)
   }
@@ -1163,7 +1161,6 @@ final class TeleprompterWindow: NSWindow {
       let bh: CGFloat = 26, bw: CGFloat = 200
       pillBar.frame = NSRect(x: w - bw - 8, y: h - bh - 6, width: bw, height: bh)   // 右上角控制条
       pillTrack.frame = CGRect(x: 12, y: 6, width: max(20, w - 24), height: 3)       // 底进度
-      pillSeekBar.frame = NSRect(x: 0, y: 0, width: w, height: 18)
       speedLabel.position = CGPoint(x: 14, y: 20)                                      // 收起态速度数值
       linesView.frame = NSRect(x: 12, y: 11, width: max(20, w - 24), height: h - bh - 18)
       let cf: CGFloat = 18                                   // 收起态固定小字(不随宽度变大)
@@ -1204,50 +1201,12 @@ final class TeleprompterWindow: NSWindow {
       let f = screen.visibleFrame
       setFrameOrigin(NSPoint(x: f.midX - frame.width / 2, y: f.maxY - frame.height - 16))
     }
-    refreshPresentationOverlayOrder()
+    orderFrontRegardless()
     maybeAutopasteClipboardForDebugVerification()
     maybeRunEditPasteProbe()
   }
 
   var overlayWindowID: CGWindowID { CGWindowID(windowNumber) }
-
-  private func configurePresentationOverlayBehavior() {
-    level = .screenSaver
-    collectionBehavior = [
-      .canJoinAllSpaces,
-      .fullScreenAuxiliary,
-      .stationary,
-      .ignoresCycle,
-    ]
-    animationBehavior = .none
-  }
-
-  private func observePresentationSpaceChanges() {
-    activeSpaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
-      forName: NSWorkspace.activeSpaceDidChangeNotification,
-      object: nil,
-      queue: .main
-    ) { [weak self] _ in
-      Task { @MainActor [weak self] in
-        self?.refreshPresentationOverlayOrder()
-      }
-    }
-
-    appActivationObserver = NotificationCenter.default.addObserver(
-      forName: NSApplication.didBecomeActiveNotification,
-      object: NSApp,
-      queue: .main
-    ) { [weak self] _ in
-      Task { @MainActor [weak self] in
-        self?.refreshPresentationOverlayOrder()
-      }
-    }
-  }
-
-  private func refreshPresentationOverlayOrder() {
-    configurePresentationOverlayBehavior()
-    orderFrontRegardless()
-  }
 
   // MARK: - 滚动 + 游戏循环
 
@@ -1411,13 +1370,6 @@ final class TeleprompterWindow: NSWindow {
     playing = false
     playPauseButton?.attributedTitle = Self.barTitle("▶")
     pillPlay?.attributedTitle = Self.barTitle("▶")
-  }
-
-  private func seekToProgress(_ p: CGFloat) {
-    pauseForSeek()   // 拖动定位时自动暂停, 不被自动滚动抢
-    linesView.scrollOffset = p * linesView.resetAt
-    linesView.updateDepth()
-    updateJourney()
   }
 
   @objc private func togglePlay() {

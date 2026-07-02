@@ -7,11 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		3859B87DFC59200E0A9F0502 /* gpupixel.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D4085A3D4744DBC35EF7148 /* gpupixel.framework */; };
 		A31BF0A82F1CF69100902D12 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A31BF0A72F1CF69100902D12 /* Sparkle */; };
 		B42DE1A02FA1B90000WEBP01 /* WebP in Frameworks */ = {isa = PBXBuildFile; productRef = B42DE1A12FA1B90000WEBP01 /* WebP */; };
 		C73DB2A02FA3GRDB00GRDB01 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = C73DB2A12FA3GRDB00GRDB01 /* GRDB */; };
-		CC31E07538DB54AB36D5E6A9 /* gpupixel.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 9D4085A3D4744DBC35EF7148 /* gpupixel.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,7 +29,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				CC31E07538DB54AB36D5E6A9 /* gpupixel.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -39,7 +36,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		9D4085A3D4744DBC35EF7148 /* gpupixel.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = gpupixel.framework; path = LumiCue/ThirdParty/GpuPixel/gpupixel.framework; sourceTree = "<group>"; };
 		A36462A32F18EEDA0003453D /* LumiCue.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LumiCue.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D00100012F9F000000000001 /* LumiCueTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LumiCueTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D00110022F9F000000000002 /* LumiCue.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = LumiCue.xctestplan; sourceTree = "<group>"; };
@@ -84,7 +80,6 @@
 				A31BF0A82F1CF69100902D12 /* Sparkle in Frameworks */,
 				B42DE1A02FA1B90000WEBP01 /* WebP in Frameworks */,
 				C73DB2A02FA3GRDB00GRDB01 /* GRDB in Frameworks */,
-				3859B87DFC59200E0A9F0502 /* gpupixel.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -101,7 +96,6 @@
 		39A86D7BE39C40BA307A47F4 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				9D4085A3D4744DBC35EF7148 /* gpupixel.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -412,12 +406,10 @@
 				EXECUTABLE_NAME = LumiCue;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/LumiCue/ThirdParty/GpuPixel",
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/LumiCue/ThirdParty/GpuPixel/include",
 				);
 				INFOPLIST_FILE = LumiCue/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "LumiCue Debug";
@@ -464,12 +456,10 @@
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/LumiCue/ThirdParty/GpuPixel",
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/LumiCue/ThirdParty/GpuPixel/include",
 				);
 				INFOPLIST_FILE = LumiCue/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = LumiCue;

@@ -196,11 +196,12 @@ final class CameraBubbleWindow: NSWindow {
 
     // 美颜滑块 Beauty (0-100, 拖动实时调节 GpuPixel)
     let beautySub = NSMenu()
+    // 美颜直连 gpupixel 引擎已移除(x86-only)，这几个滑块暂时停用，初值取 0。
     let sliders: [(String, Int, Float)] = [
-      ("Smooth 磨皮", 0, capture.gpSmoothing),
-      ("Whiten 美白", 1, capture.gpWhitening),
-      ("Slim 瘦脸", 2, capture.gpFaceSlim),
-      ("Eye 大眼", 3, capture.gpEyeZoom),
+      ("Smooth 磨皮", 0, 0),
+      ("Whiten 美白", 1, 0),
+      ("Slim 瘦脸", 2, 0),
+      ("Eye 大眼", 3, 0),
     ]
     for (title, tag, val) in sliders {
       let item = NSMenuItem()
@@ -274,13 +275,7 @@ final class CameraBubbleWindow: NSWindow {
   }
 
   @objc private func beautySliderChanged(_ sender: NSSlider) {
-    let v = Float(sender.doubleValue / 100.0)
-    switch sender.tag {
-    case 0: capture.gpSmoothing = v
-    case 1: capture.gpWhitening = v
-    case 2: capture.gpFaceSlim = v
-    case 3: capture.gpEyeZoom = v
-    default: break
-    }
+    // gpupixel 直连美颜(磨皮/美白/瘦脸/大眼)已移除(x86-only)，暂作空操作，待重新接入。
+    _ = sender
   }
 }

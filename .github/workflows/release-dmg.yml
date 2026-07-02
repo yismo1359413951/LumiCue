@@ -30,7 +30,7 @@ jobs:
         working-directory: lumicue
         run: |
           xcodebuild -version
-          xcodebuild -list -project LumiCue.xcodeproj
+          xcodebuild -list -project LumiCue.xcodeproj || true
 
       - name: Resolve version
         id: version

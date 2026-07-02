@@ -43,12 +43,43 @@ private enum TeleprompterScriptSanitizer {
   }
 
   nonisolated static func compactLine(_ line: String) -> String {
-    String(line.unicodeScalars.filter { !isRemovableWhitespace($0) })
+    compact(line, keepNewlines: false)
   }
 
-  /// 删所有空白符但保留换行(编辑框增量输入/粘贴用: 一个字挨一个字, 段落换行留着, 标点保留)。
+  /// 删空白但保留换行(编辑框增量输入/粘贴用)。
   nonisolated static func compactKeepingNewlines(_ s: String) -> String {
-    String(s.unicodeScalars.filter { $0.value == 0x000A || !isRemovableWhitespace($0) })
+    compact(s, keepNewlines: true)
+  }
+
+  /// 去空格总规则: 中文之间的空格删掉(一个字挨一个字更紧凑),
+  /// 但**英文单词/数字之间保留一个空格** —— 否则 "Claude Code" 会变 "ClaudeCode", 英文全糊成一团。
+  private nonisolated static func compact(_ s: String, keepNewlines: Bool) -> String {
+    var out = ""
+    var pendingSpace = false
+    for u in s.unicodeScalars {
+      if keepNewlines && u.value == 0x000A {
+        pendingSpace = false
+        out.unicodeScalars.append(u)
+        continue
+      }
+      if isRemovableWhitespace(u) {
+        pendingSpace = true          // 先记着, 看两边是不是英文再决定留不留
+        continue
+      }
+      if pendingSpace {
+        if let last = out.unicodeScalars.last, isWordScalar(last), isWordScalar(u) {
+          out.unicodeScalars.append(" ")   // 英文/数字之间: 保留一个空格
+        }
+        pendingSpace = false
+      }
+      out.unicodeScalars.append(u)
+    }
+    return out
+  }
+
+  /// 英文字母或数字(空格夹在这两类中间才保留)。
+  private nonisolated static func isWordScalar(_ u: UnicodeScalar) -> Bool {
+    (0x30...0x39).contains(u.value) || (0x41...0x5A).contains(u.value) || (0x61...0x7A).contains(u.value)
   }
 
   nonisolated static func shouldRunEditPasteProbe() -> Bool {
@@ -181,23 +212,10 @@ enum TeleprompterDisplayTextComposer {
 
   private static func kern(after char: Character, next: Character?, fontSize: CGFloat) -> CGFloat {
     guard let next else { return 0 }
-
-    let charIsCJK = isCJK(char)
-    let nextIsCJK = isCJK(next)
-    let charIsASCII = isASCIIish(char)
-    let nextIsASCII = isASCIIish(next)
-
-    if charIsCJK && nextIsCJK {
+    // 只在两个中日韩方块字之间做紧排(它们等宽, 收紧后更整齐)。
+    // 只要有一边是英文/数字/符号, 就用字体自然间距 —— 否则英文字母会挤成一团、标点/符号会压到字上。
+    if isCJK(char) && isCJK(next) {
       return -max(1.8, fontSize * 0.12)
-    }
-    if (charIsCJK && nextIsASCII) || (charIsASCII && nextIsCJK) {
-      return -max(2.4, fontSize * 0.18)
-    }
-    if charIsASCII && nextIsASCII {
-      return -max(0.8, fontSize * 0.06)
-    }
-    if isTightPunctuation(char) || isTightPunctuation(next) {
-      return -max(1.6, fontSize * 0.10)
     }
     return 0
   }
@@ -228,7 +246,13 @@ enum TeleprompterDisplayTextComposer {
 
 @MainActor
 final class VoiceFollower: NSObject {
-  private let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "zh-CN"))
+  private var recognizer = SFSpeechRecognizer(locale: Locale(identifier: "zh-CN"))
+
+  /// 切换识别语言(跟界面 EN/中 一致; 运行中不切, 停了再换)。
+  func setLanguage(_ id: String) {
+    guard !running else { return }
+    recognizer = SFSpeechRecognizer(locale: Locale(identifier: id))
+  }
   private let audioEngine = AVAudioEngine()
   private var request: SFSpeechAudioBufferRecognitionRequest?
   private var task: SFSpeechRecognitionTask?
@@ -341,9 +365,18 @@ private final class LinesView: NSView {
   }
 
   func rebuild() {
-    lineLayers.forEach { $0.removeFromSuperlayer() }
+    // 治「重影」根因: 每次重建前, 把图层上所有旧文字层彻底清掉(不只删 lineLayers 登记的那批,
+    // 连漏网/脱管的也一起删), 并禁用隐式动画确保当场同步移除 —— 否则换稿/重排时旧图层会越堆越多,
+    // 底下没更新的旧稿就成了错开的暗影(实测曾堆到 18 层)。
+    CATransaction.begin(); CATransaction.setDisableActions(true)
+    (layer?.sublayers ?? []).filter { $0 is CATextLayer }.forEach { $0.removeFromSuperlayer() }
+    CATransaction.commit()
     lineLayers.removeAll(); lineCenters.removeAll(); lineBuckets.removeAll()
     lineHeights.removeAll(); lineTexts.removeAll(); lineCharCounts.removeAll(); lineHi.removeAll()
+
+    // 视图还没排布好(宽度过小)时先别建, 免得按 40pt 宽把整稿拆成一堆单字层(既浪费又易残留),
+    // 等真正 layout 拿到正确宽度再建。
+    guard bounds.width > 60 else { maybeLogRenderedLines(); return }
 
     let wrapWidth = max(40, bounds.width - 2 * hPad)
     curFont = makeFont()
@@ -462,6 +495,18 @@ private final class LinesView: NSView {
   func focusLine(_ i: Int) {
     guard i >= 0, i < lineCenters.count, let first = lineCenters.first else { return }
     scrollOffset = lineCenters[i] - first
+  }
+
+  /// 点击位置(视图坐标 y)对应哪一行; 离行中心太远(空白处)返回 nil。双击跳行用。
+  func lineIndex(atViewY y: CGFloat) -> Int? {
+    guard let first = lineCenters.first else { return nil }
+    let focusY = bounds.height * focusFrac
+    var best = CGFloat.greatestFiniteMagnitude; var idx = -1
+    for (i, c) in lineCenters.enumerated() {
+      let cy = focusY + (c - first) - scrollOffset
+      let d = abs(cy - y); if d < best { best = d; idx = i }
+    }
+    return (idx >= 0 && best < 70) ? idx : nil
   }
 
   /// 重念这句: 把当前焦点行挪到刚进焦点的位置, 从这句开头重念。
@@ -651,6 +696,7 @@ final class TeleprompterWindow: NSWindow {
   private var collapsed = false
   private var expandedFrame = NSRect.zero
   private let pillView = NSView()
+  private let pillSeek = SeekBarView()     // 收起态底部一条可拖动定位进度(叠在 pillTrack 上, 透明只管拖)
   private let pillBar = NSView()            // 收起态右上角控制条
   private var pillPlay: NSButton!
   private var pillExpand: NSButton!
@@ -687,6 +733,7 @@ final class TeleprompterWindow: NSWindow {
   把逐字稿粘贴进来：点上面「编辑」，或直接 ⌘V
   只有你看得到，录屏和直播的观众都看不到
   当前这行最大最亮，跟着滚动念就行
+  空格=暂停 · ↑↓=上一句下一句 · 双击某行=跳过去 · 右键=更多
   """
 
   /// 字色可选项 — Tailwind(开源设计系统)柔和配色, 深色背景念稿清晰且耐看, 不刺眼。
@@ -723,9 +770,25 @@ final class TeleprompterWindow: NSWindow {
     didSet { sharingType = hiddenFromCapture ? .none : .readOnly }
   }
 
+  // MARK: - 记住设置(稿子/速度/字号/字色/字体/语言/窗口位置, 重开自动恢复)
+  private let store = UserDefaults.standard
+  private enum PK {
+    static let script = "LumiCue.script"
+    static let speed = "LumiCue.speed"
+    static let fontScale = "LumiCue.fontScale"
+    static let colorIndex = "LumiCue.colorIndex"
+    static let fontFamily = "LumiCue.fontFamily"
+    static let isEnglish = "LumiCue.isEnglish"
+    static let windowFrame = "LumiCue.windowFrame"
+  }
+
   init(width: CGFloat = 680, height: CGFloat = 320) {
     super.init(contentRect: NSRect(x: 0, y: 0, width: width, height: height),
                styleMask: [.borderless], backing: .buffered, defer: false)
+    // 恢复上次的设置(要在建按钮/进度条之前, 它们的文案和数值取决于这些)
+    isEnglish = store.bool(forKey: PK.isEnglish)
+    if let v = store.object(forKey: PK.speed) as? Double { speed = CGFloat(v) }
+    if let v = store.object(forKey: PK.fontScale) as? Double { fontScale = CGFloat(v) }
     sharingType = .readOnly
     appearance = NSAppearance(named: .darkAqua)   // 深色外观: 按钮 .title 白字且能实时更新(⏸↔▶)
     isOpaque = false
@@ -768,6 +831,14 @@ final class TeleprompterWindow: NSWindow {
     linesView.enableKaraoke = false
     linesView.enableBlur = false        // 不虚化, 上下行保持清楚可读(念稿时一直看得见)
     linesView.script = normalize(placeholder)   // 占位去空格(与编辑框一致)
+    // 恢复上次的稿子/字色/字体
+    if let saved = store.string(forKey: PK.script), !saved.isEmpty { linesView.script = saved }
+    let ci = store.integer(forKey: PK.colorIndex)
+    if ci > 0, ci < Self.textColorChoices.count {
+      linesView.textColor = Self.textColorChoices[ci].1
+      editText.textColor = Self.textColorChoices[ci].1
+    }
+    if let fam = store.string(forKey: PK.fontFamily), !fam.isEmpty { linesView.fontFamily = fam }
     linesView.onLineComplete = { [weak self] in self?.onLineComplete() }
     contentView?.addSubview(linesView)
 
@@ -787,7 +858,7 @@ final class TeleprompterWindow: NSWindow {
     editText.allowsUndo = true
     editText.delegate = editText        // 总闸: 任何文本变更即时去空格(无格式粘贴)
     editText.drawsBackground = false
-    editText.textColor = .white
+    editText.textColor = linesView.textColor   // 跟随恢复的字色(默认白)
     editText.insertionPointColor = .white
     editText.font = NSFont.systemFont(ofSize: 18, weight: .regular)
     editScroll.documentView = editText
@@ -801,15 +872,23 @@ final class TeleprompterWindow: NSWindow {
     setupColoredBorder()                     // 彩色流光描边(最上层叠加, 不挡点击)
     layoutContents()
     startScrolling()
+    // 记住窗口位置(移动后保存; 收起态的小胶囊尺寸不存, 只存大框)
+    NotificationCenter.default.addObserver(self, selector: #selector(persistFrame),
+                                           name: NSWindow.didMoveNotification, object: self)
+  }
+
+  @objc private func persistFrame() {
+    guard !collapsed else { return }
+    store.set(NSStringFromRect(frame), forKey: PK.windowFrame)
   }
 
   // MARK: - 自由拖拽改大小
 
   // 框内控件: 速度 / 字体(不再藏右键)
-  @objc private func speedDown() { speed = max(0.1, ((speed * 10).rounded() - 1) / 10); updateSpeedLabel() }
-  @objc private func speedUp() { speed = min(2.0, ((speed * 10).rounded() + 1) / 10); updateSpeedLabel() }
-  @objc private func fontDown() { fontScale = max(0.5, fontScale - 0.12); layoutContents() }
-  @objc private func fontUp() { fontScale = min(2.2, fontScale + 0.12); layoutContents() }
+  @objc private func speedDown() { speed = max(0.1, ((speed * 10).rounded() - 1) / 10); updateSpeedLabel(); store.set(Double(speed), forKey: PK.speed) }
+  @objc private func speedUp() { speed = min(2.0, ((speed * 10).rounded() + 1) / 10); updateSpeedLabel(); store.set(Double(speed), forKey: PK.speed) }
+  @objc private func fontDown() { fontScale = max(0.5, fontScale - 0.12); layoutContents(); store.set(Double(fontScale), forKey: PK.fontScale) }
+  @objc private func fontUp() { fontScale = min(2.2, fontScale + 0.12); layoutContents(); store.set(Double(fontScale), forKey: PK.fontScale) }
   @objc private func pickFont() {
     let menu = NSMenu()
     let cur = linesView.fontFamily
@@ -826,6 +905,7 @@ final class TeleprompterWindow: NSWindow {
   @objc private func setFontFamily(_ s: NSMenuItem) {
     let fam = s.representedObject as? String
     linesView.fontFamily = (fam?.isEmpty ?? true) ? nil : fam
+    store.set(fam ?? "", forKey: PK.fontFamily)
   }
   @objc private func pickColor() {
     let menu = NSMenu()
@@ -849,6 +929,7 @@ final class TeleprompterWindow: NSWindow {
     setFrame(NSRect(x: resizeStartFrame.minX, y: resizeStartFrame.maxY - h, width: w, height: h), display: true)
     layoutContents()
     linesView.needsLayout = true
+    persistFrame()
   }
 
   // MARK: - 控制条
@@ -908,9 +989,11 @@ final class TeleprompterWindow: NSWindow {
 
   @objc private func toggleLang() {
     isEnglish.toggle()
+    store.set(isEnglish, forKey: PK.isEnglish)
     applyLang(in: controlBar)
     applyLang(in: pillBar)
     refreshDynamicTitles()
+    updateSpeedLabel()
   }
 
   /// 递归把容器内所有 BarButton 切到当前语言(静态文案按钮)。
@@ -961,7 +1044,7 @@ final class TeleprompterWindow: NSWindow {
     comboLayer.anchorPoint = CGPoint(x: 0, y: 0.5); comboLayer.bounds = CGRect(x: 0, y: 0, width: 240, height: 18)
     comboLayer.string = ""
     speedLabel.contentsScale = s; speedLabel.alignmentMode = .left
-    speedLabel.anchorPoint = CGPoint(x: 0, y: 0.5); speedLabel.bounds = CGRect(x: 0, y: 0, width: 140, height: 16)
+    speedLabel.anchorPoint = CGPoint(x: 0, y: 0.5); speedLabel.bounds = CGRect(x: 0, y: 0, width: 220, height: 16)   // 放得下"速度 0.4× · 剩 3:20"
     speedLabel.zPosition = 60
     contentView?.layer?.addSublayer(speedLabel)
     journeyBar.layer?.addSublayer(trackLayer)
@@ -970,18 +1053,41 @@ final class TeleprompterWindow: NSWindow {
     journeyBar.layer?.addSublayer(comboLayer)
     contentView?.addSubview(journeyBar)
     // 拖动进度条 → 字幕跳到对应进度位置
-    journeyBar.onSeek = { [weak self] p in
-      guard let self else { return }
-      self.pauseForSeek()   // 拖动定位时自动暂停, 不被自动滚动抢
-      self.linesView.scrollOffset = p * self.linesView.resetAt
-      self.linesView.updateDepth()
-      self.updateJourney()
-    }
+    journeyBar.onSeek = { [weak self] p in self?.seekTo(p) }
     updateSpeedLabel()
   }
 
+  /// 点/拖进度条定位到进度 p(0...1): 展开态和收起态共用。
+  private func seekTo(_ p: CGFloat) {
+    pauseForSeek()   // 拖动定位时自动暂停, 不被自动滚动抢
+    linesView.scrollOffset = p * linesView.resetAt
+    finished = linesView.resetAt > 0 && p >= 0.999
+    linesView.updateDepth()
+    updateJourney()
+    updateSpeedLabel()
+    // 拖之前在播 → 松手(停止拖动)1秒后自动继续, 不用再点播放
+    seekResumeTimer?.invalidate()
+    if autoResumeAfterSeek {
+      seekResumeTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] _ in
+        Task { @MainActor in
+          guard let self, self.autoResumeAfterSeek, !self.playing, !self.editing, !self.finished else { return }
+          self.autoResumeAfterSeek = false
+          self.togglePlay()
+        }
+      }
+    }
+  }
+
   private func updateSpeedLabel() {
-    speedLabel.string = NSAttributedString(string: String(format: "速度 %.1f×", speed), attributes: [
+    var text = String(format: isEnglish ? "Speed %.1f×" : "速度 %.1f×", speed)
+    // 按当前速度估算剩余时长(主播最关心"还剩多久"), 每秒刷新一次
+    let remainPx = max(0, linesView.resetAt - linesView.scrollOffset)
+    let pxPerSec = speed * 30   // tick 30fps, 每帧走 speed 像素
+    if pxPerSec > 0, linesView.resetAt > 0, remainPx > 0 {
+      let s = Int(remainPx / pxPerSec)
+      text += String(format: isEnglish ? " · %d:%02d left" : " · 剩 %d:%02d", s / 60, s % 60)
+    }
+    speedLabel.string = NSAttributedString(string: text, attributes: [
       .font: NSFont.systemFont(ofSize: 12, weight: .semibold),
       .foregroundColor: NSColor(srgbRed: 0.77, green: 0.71, blue: 0.99, alpha: 1)])
   }
@@ -1055,6 +1161,7 @@ final class TeleprompterWindow: NSWindow {
   private func setupPill() {
     pillView.wantsLayer = true
     pillView.isHidden = true
+    pillSeek.onSeek = { [weak self] p in self?.seekTo(p) }   // 收起态: 底部进度条可点/拖定位
     // 收起态: 复用 linesView 显示 2-3 行小字 + 底进度 + 右上角控制条(后退/暂停/速度/展开)
     pillBar.wantsLayer = true
     pillBar.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.50).cgColor
@@ -1066,6 +1173,7 @@ final class TeleprompterWindow: NSWindow {
     let st = NSStackView(views: [
       makeBarButton("⏪", "⏪", #selector(stepBack)), pillPlay,
       makeBarButton("慢", "Slow", #selector(speedDown)), makeBarButton("快", "Fast", #selector(speedUp)),
+      makeBarButton("A-", "A-", #selector(fontDown)), makeBarButton("A+", "A+", #selector(fontUp)),  // 收起态也能调字号
       pillExpand,
     ])
     st.orientation = .horizontal; st.spacing = 3; st.distribution = .fillEqually
@@ -1085,6 +1193,7 @@ final class TeleprompterWindow: NSWindow {
     pillFill.cornerRadius = 1.5
     pillView.layer?.addSublayer(pillTrack)
     pillView.layer?.addSublayer(pillFill)
+    pillView.addSubview(pillSeek)      // 透明拖动条, 叠在 pillTrack 上(位置在收起态 layout 里设)
     pillView.addSubview(pillBar)
     contentView?.addSubview(pillView)
   }
@@ -1158,12 +1267,13 @@ final class TeleprompterWindow: NSWindow {
     // ===== 收起态: 很宽很矮的横条, 复用 linesView 显示 2-3 行小字 =====
     if collapsed {
       pillView.frame = cv.bounds
-      let bh: CGFloat = 26, bw: CGFloat = 200
+      let bh: CGFloat = 26, bw: CGFloat = 272    // 7个按钮: ⏪ ⏸ 慢 快 A- A+ ⤢
       pillBar.frame = NSRect(x: w - bw - 8, y: h - bh - 6, width: bw, height: bh)   // 右上角控制条
-      pillTrack.frame = CGRect(x: 12, y: 6, width: max(20, w - 24), height: 3)       // 底进度
-      speedLabel.position = CGPoint(x: 14, y: 20)                                      // 收起态速度数值
-      linesView.frame = NSRect(x: 12, y: 11, width: max(20, w - 24), height: h - bh - 18)
-      let cf: CGFloat = 18                                   // 收起态固定小字(不随宽度变大)
+      pillTrack.frame = CGRect(x: 12, y: 6, width: max(20, w - 24), height: 3)       // 底进度(细条, 视觉)
+      pillSeek.frame = NSRect(x: 0, y: 0, width: w, height: 16)                        // 底部可抓取区(比细条高, 好点/拖)
+      speedLabel.position = CGPoint(x: 14, y: 22)                                      // 收起态速度数值(上移让开拖动区)
+      linesView.frame = NSRect(x: 12, y: 18, width: max(20, w - 24), height: h - bh - 26)
+      let cf = max(10, min(40, (18 * fontScale).rounded()))  // 收起态小字基准18pt × 手动倍数(A-/A+ 可调)
       if abs(linesView.fontSize - cf) > 0.5 { linesView.fontSize = cf }
       let rpW = min(w - 20, 330), rpH: CGFloat = 30          // 收起态救场面板: 底部居中
       rescuePanel.frame = NSRect(x: (w - rpW) / 2, y: 8, width: rpW, height: rpH)
@@ -1197,13 +1307,24 @@ final class TeleprompterWindow: NSWindow {
   }
 
   func show() {
-    if let screen = NSScreen.main {
-      let f = screen.visibleFrame
-      setFrameOrigin(NSPoint(x: f.midX - frame.width / 2, y: f.maxY - frame.height - 16))
-    }
+    // 恢复上次的窗口位置和大小(还得在屏幕内才用, 防拔了外接屏后窗口跑丢)
+    if let s = store.string(forKey: PK.windowFrame) {
+      let f = NSRectFromString(s)
+      if f.width >= 360, f.height >= 180,
+         NSScreen.screens.contains(where: { $0.visibleFrame.intersects(f) }) {
+        setFrame(f, display: true)
+        layoutContents()
+      } else { centerOnMainScreen() }
+    } else { centerOnMainScreen() }
     orderFrontRegardless()
     maybeAutopasteClipboardForDebugVerification()
     maybeRunEditPasteProbe()
+  }
+
+  private func centerOnMainScreen() {
+    guard let screen = NSScreen.main else { return }
+    let f = screen.visibleFrame
+    setFrameOrigin(NSPoint(x: f.midX - frame.width / 2, y: f.maxY - frame.height - 16))
   }
 
   var overlayWindowID: CGWindowID { CGWindowID(windowNumber) }
@@ -1221,15 +1342,15 @@ final class TeleprompterWindow: NSWindow {
     guard playing, !editing else { return }
     if voiceMode { return }   // 语音模式: 滚动由你说话驱动, 不自动推进
     linesView.scrollOffset += speed
-    if linesView.scrollOffset > linesView.resetAt {     // 念完一遍 → 回到开头, 重置游戏
-      linesView.scrollOffset = 0
-      combo = 0; finished = false
-      refreshCombo(pulse: false)
+    if linesView.resetAt > 0, linesView.scrollOffset >= linesView.resetAt {
+      // 念完: 停在结尾(不再自动从头循环打断你收尾)。再按空格/播放 → 从头重来。
+      linesView.scrollOffset = linesView.resetAt
+      finished = true
+      togglePlay()
     }
     linesView.updateDepth()
     updateJourney()
-
-    if !finished, linesView.progress >= 0.992 { finished = true }   // 抵达终点(无庆祝特效)
+    if frameTick % 30 == 0 { updateSpeedLabel() }   // 每秒刷新一次"剩余时长"
   }
 
   /// 干净的发光进度填充随念稿进度延伸(无小人/无天色)。
@@ -1364,16 +1485,25 @@ final class TeleprompterWindow: NSWindow {
 
   // MARK: - 控制条 actions
 
-  /// 拖动进度条时自动暂停滚动(只暂停, 不弹救场面板)。
+  /// 拖动进度条时自动暂停滚动(只暂停, 不弹救场面板)。原本在播 → 松手1秒后自动继续。
+  private var seekResumeTimer: Timer?
+  private var autoResumeAfterSeek = false
+
   private func pauseForSeek() {
     guard playing else { return }
     playing = false
+    autoResumeAfterSeek = true   // 记住"拖之前在播", 松手后自动恢复
     playPauseButton?.attributedTitle = Self.barTitle("▶")
     pillPlay?.attributedTitle = Self.barTitle("▶")
   }
 
   @objc private func togglePlay() {
+    seekResumeTimer?.invalidate(); autoResumeAfterSeek = false   // 手动操作优先, 取消待恢复
     playing.toggle()
+    if playing, finished {   // 在结尾按播放/空格 → 从头重来
+      linesView.scrollOffset = 0; finished = false; combo = 0; refreshCombo(pulse: false)
+      linesView.updateDepth(); updateJourney()
+    }
     playPauseButton.attributedTitle = Self.barTitle(playing ? "⏸" : "▶")
     pillPlay?.attributedTitle = Self.barTitle(playing ? "⏸" : "▶")
     rescuePanel.isHidden = playing || editing   // 暂停就弹救场面板(收起态也一致)
@@ -1407,7 +1537,21 @@ final class TeleprompterWindow: NSWindow {
   @objc private func sizeMedium() { resize(to: 680) }
   @objc private func sizeLarge() { resize(to: 860) }
 
-  @objc private func closePrompter() { timer?.invalidate(); NSApp.terminate(nil) }   // 纯提词器: ✕ 即退出 app
+  /// 纯提词器: ✕ 即退出 app。有稿子时先确认一下, 防止误触(✕ 紧挨着「收起」)。
+  @objc private func closePrompter() {
+    let s = linesView.script
+    if !s.isEmpty, s != normalize(placeholder), s != "⌘V 粘贴你的逐字稿" {
+      let a = NSAlert()
+      a.messageText = isEnglish ? "Quit LumiCue?" : "退出 LumiCue？"
+      a.informativeText = isEnglish
+        ? "Your script and settings are saved and will be restored next time."
+        : "稿子和设置已自动保存，下次打开会原样恢复。"
+      a.addButton(withTitle: isEnglish ? "Quit" : "退出")
+      a.addButton(withTitle: isEnglish ? "Cancel" : "取消")
+      guard a.runModal() == .alertFirstButtonReturn else { return }
+    }
+    timer?.invalidate(); NSApp.terminate(nil)
+  }
 
   private func resize(to width: CGFloat) {
     let h = width * 0.47
@@ -1415,9 +1559,24 @@ final class TeleprompterWindow: NSWindow {
     setFrame(NSRect(x: midX - width / 2, y: top - h, width: width, height: h), display: true)
     layoutContents()
     linesView.needsLayout = true
+    persistFrame()
   }
 
   override var canBecomeKey: Bool { true }
+
+  /// 双击某一行 → 直接跳到那句(单击/拖动仍是移动窗口, 不冲突)。
+  override func mouseUp(with event: NSEvent) {
+    if event.clickCount == 2, !editing, !collapsed {
+      let pt = linesView.convert(event.locationInWindow, from: nil)
+      if linesView.bounds.contains(pt), let i = linesView.lineIndex(atViewY: pt.y) {
+        linesView.focusLine(i)
+        linesView.updateDepth()
+        updateJourney()
+        return
+      }
+    }
+    super.mouseUp(with: event)
+  }
 
   /// 快捷键: ⌘V 直接粘稿 · 空格 暂停/播放 · ↑回退一句(卡壳) · ↓前进一句。编辑态不拦。
   override func keyDown(with event: NSEvent) {
@@ -1507,6 +1666,7 @@ final class TeleprompterWindow: NSWindow {
     TeleprompterScriptSanitizer.logValue("setLiveScript normalized", value: normalized)
     linesView.script = normalized
     linesView.scrollOffset = 0; combo = 0; finished = false; refreshCombo(pulse: false)
+    store.set(normalized, forKey: PK.script)   // 记住稿子, 重开自动恢复
   }
 
   private func maybeAutopasteClipboardForDebugVerification() {
@@ -1545,6 +1705,7 @@ final class TeleprompterWindow: NSWindow {
     if editing { toggleEdit() }      // 退出编辑态回显示态
     linesView.script = "⌘V 粘贴你的逐字稿"
     linesView.scrollOffset = 0; combo = 0; finished = false; refreshCombo(pulse: false)
+    store.set("", forKey: PK.script)   // 清空也清掉记住的稿子
   }
 
   /// ⏪ 卡壳救急: 回退到上一句重念。
@@ -1573,7 +1734,8 @@ final class TeleprompterWindow: NSWindow {
     if voiceMode {
       if !playing { togglePlay() }            // 确保在播放态
       voiceLine = linesView.currentLineIndex
-      showStatus("🎤 开启中…请允许麦克风/语音")
+      voiceFollower.setLanguage(isEnglish ? "en-US" : "zh-CN")   // 识别语言跟界面语言走
+      showStatus(isEnglish ? "🎤 Starting… allow mic/speech access" : "🎤 开启中…请允许麦克风/语音")
       voiceFollower.onTranscript = { [weak self] t in self?.alignAndScroll(t) }
       voiceFollower.onStatus = { [weak self] m in self?.showStatus(m) }
       voiceFollower.start()
@@ -1629,6 +1791,8 @@ final class TeleprompterWindow: NSWindow {
   @objc private func setSpeed(_ s: NSMenuItem) { if let v = s.representedObject as? Double { speed = CGFloat(v) } }
   @objc private func setFontSize(_ s: NSMenuItem) { if let v = s.representedObject as? Double { linesView.fontSize = CGFloat(v) } }
   @objc private func setTextColor(_ s: NSMenuItem) {
-    if let c = s.representedObject as? NSColor { linesView.textColor = c; editText.textColor = c }
+    guard let c = s.representedObject as? NSColor else { return }
+    linesView.textColor = c; editText.textColor = c
+    if let i = Self.textColorChoices.firstIndex(where: { $0.1 == c }) { store.set(i, forKey: PK.colorIndex) }
   }
 }

@@ -15,6 +15,22 @@
 
 ---
 
+## 📥 下载 / Download
+
+| 你的 Mac 芯片 Your chip | 下载 Download |
+|---|---|
+| **Apple 芯片** M1 / M2 / M3 / M4 (2020 年后) | [LumiCue-v1.25.0-AppleSilicon.zip](https://github.com/yismo1359413951/LumiCue/releases/download/v1.25.0/LumiCue-v1.25.0-AppleSilicon.zip) |
+| **Intel 芯片** (较老的 Mac) | [LumiCue-v1.25.0-Intel.zip](https://github.com/yismo1359413951/LumiCue/releases/download/v1.25.0/LumiCue-v1.25.0-Intel.zip) |
+
+> 🧭 不确定是哪种芯片？点屏幕左上角 ** → 关于本机**：写 "Apple M…" 就选 Apple 芯片版；写 "Intel" 就选 Intel 版。
+> Not sure? Apple menu **, then About This Mac**: "Apple M…" = Apple Silicon; "Intel" = Intel.
+>
+> 🔓 **首次打开**：解压后把 LumiCue 拖进「应用程序」，然后**右键点击 → 打开**（免费应用未做付费签名，直接双击会被 macOS 拦下）。
+> **First launch**: drag LumiCue to Applications, then **right-click → Open** (free app without paid signing; double-click gets blocked by macOS).
+
+---
+
+
 ## 关于
 
 LumiCue 是一个小小的提词器。你录视频、做直播，眼前有稿子要念——但你不想让观众看到。LumiCue 就是一块半透明的毛玻璃窗，浮在你的屏幕上方。你看着它念，观众什么都看不见。
@@ -23,10 +39,20 @@ LumiCue 是一个小小的提词器。你录视频、做直播，眼前有稿子
 
 ---
 
-## ✅ 最新更新：v1.24.1
+## ✅ 最新更新：v1.25.0
 
-- **全屏演示也能浮在上面**——PowerPoint / 演示文稿全屏播放时，LumiCue 会尽量保持在幻灯片上方，不再一全屏就找不到提词窗。
-- **胶囊态进度条也能拖动**——窗口收起成窄条之后，底部迷你进度条现在也可以点击和拖动，和大框里的进度条一样能直接跳到稿子任意位置。
+- **原生支持 Apple 芯片（M1–M4）与 Intel**——移除了只有 Intel 版的旧美颜引擎，彻底解决 Apple 芯片 Mac 上一打开就闪退的问题。
+- **记住你的一切**——稿子、速度、字号、字色、字体、窗口位置，关掉重开原样恢复，不用每次重新粘稿。
+- **修复提词重影**——换稿/调整窗口后旧文字残留成"错开的暗影"的问题已根治。
+- **英文不再挤成一团**——英文单词之间保留空格、字符间距改用字体自然间距（中文依旧紧凑）。
+- **显示剩余时长**——左下角实时显示"按当前速度还剩几分几秒"，心里有数。
+- **双击某行直接跳过去**——卡壳想重念哪句，双击那行就行。
+- **拖完进度条自动继续**——拖动定位后 1 秒自动恢复播放，不用再点一次。
+- **念完停在结尾**——不再自动从头循环打断你收尾；按空格才从头再来。
+- **收起态更强**——窄条模式也能调字号（A-/A+）、进度条能点击拖动定位。
+- **误触保护**——点 ✕ 退出前先确认一下（稿子已自动保存，不怕丢）。
+- **语音跟随支持英文**——界面切到 EN 后，语音跟随用英文识别。
+- **全屏演示也能浮在上面**——PowerPoint / 演示文稿全屏播放时，LumiCue 保持在幻灯片上方。
 
 ---
 

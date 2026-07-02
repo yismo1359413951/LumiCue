@@ -18,21 +18,12 @@ final class CameraCaptureService: NSObject {
   nonisolated let beauty = MetalBeautyRenderer() // 旧引擎(fallback)
   private var isConfigured = false
 
-  // GpuPixel 专业美颜引擎(磨皮/美白/瘦脸/大眼), 在 videoQueue 线程使用
-  nonisolated(unsafe) private var gpuBeauty: GpuPixelBeauty?
-  nonisolated(unsafe) private var gpuInitTried = false
-  nonisolated(unsafe) var useGpuPixel = false // 美颜引擎黑屏待修(OpenGL线程坑), 暂用正常画面
+  // 美颜参数(滑杆值; gpupixel 引擎已移除 — 它只有 x86_64 且与提词器无关, 曾导致 arm64 版闪退)
   nonisolated(unsafe) var gpSmoothing: Float = 0.6  // 磨皮
   nonisolated(unsafe) var gpWhitening: Float = 0.3  // 美白
   nonisolated(unsafe) var gpFaceSlim: Float = 0.0   // 瘦脸
   nonisolated(unsafe) var gpEyeZoom: Float = 0.0    // 大眼
   nonisolated(unsafe) var currentDeviceID: String?  // 当前摄像头设备唯一ID
-
-  /// GpuPixel 资源目录(framework 内含 models/ 和 res/)
-  nonisolated private static var gpuResourcePath: String {
-    let fw = Bundle.main.privateFrameworksPath ?? Bundle.main.bundlePath
-    return fw + "/gpupixel.framework/Resources"
-  }
 
   /// Called on the main actor with each processed frame. 每帧处理后在主线程回调。
   var onFrame: (@MainActor (CGImage) -> Void)?
@@ -99,30 +90,6 @@ final class CameraCaptureService: NSObject {
     }
   }
 
-  // MARK: - GpuPixel 帧处理(videoQueue 线程, OpenGL 上下文亲和此线程)
-
-  nonisolated private func processWithGpuPixel(_ pixelBuffer: CVPixelBuffer) -> CGImage? {
-    if !gpuInitTried {
-      gpuInitTried = true
-      gpuBeauty = GpuPixelBeauty(resourcePath: Self.gpuResourcePath)
-      if gpuBeauty == nil { NSLog("[Camera] GpuPixel 初始化失败, 回退旧引擎") }
-    }
-    guard let gp = gpuBeauty else { return nil }
-    gp.setSmoothing(gpSmoothing, whitening: gpWhitening, faceSlim: gpFaceSlim, eyeZoom: gpEyeZoom)
-
-    CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
-    defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly) }
-    guard let base = CVPixelBufferGetBaseAddress(pixelBuffer) else { return nil }
-    let w = CVPixelBufferGetWidth(pixelBuffer)
-    let h = CVPixelBufferGetHeight(pixelBuffer)
-    let stride = CVPixelBufferGetBytesPerRow(pixelBuffer)
-    var ow: Int32 = 0, oh: Int32 = 0
-    guard let rgba = gp.processBGRA(base.assumingMemoryBound(to: UInt8.self),
-                                    width: Int32(w), height: Int32(h), stride: Int32(stride),
-                                    outWidth: &ow, outHeight: &oh) else { return nil }
-    return Self.rgbaToCGImage(rgba, width: Int(ow), height: Int(oh))
-  }
-
   nonisolated private static func rgbaToCGImage(_ data: Data, width: Int, height: Int) -> CGImage? {
     guard width > 0, height > 0, data.count >= width * height * 4 else { return nil }
     let cs = CGColorSpaceCreateDeviceRGB()
@@ -144,14 +111,7 @@ extension CameraCaptureService: AVCaptureVideoDataOutputSampleBufferDelegate {
     from connection: AVCaptureConnection
   ) {
     guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-    var cgImage: CGImage?
-    if useGpuPixel {
-      cgImage = processWithGpuPixel(pixelBuffer)
-    }
-    if cgImage == nil {
-      cgImage = beauty.process(pixelBuffer) // 回退旧引擎
-    }
-    guard let result = cgImage else { return }
+    guard let result = beauty.process(pixelBuffer) else { return }   // Metal 美颜引擎
     let sendable = UncheckedSendableImage(result)
     Task { @MainActor in
       self.onFrame?(sendable.image)

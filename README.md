@@ -74,7 +74,6 @@ LumiCue 是一个小小的提词器。你录视频、做直播，眼前有稿子
 - **毛玻璃**半透明底层——背后内容透得过来，文字却清清楚楚
 - **彩虹流光描边**——靛蓝→紫→粉红，缓缓沿着边框流转
 - **发光的进度条**，前端一颗脉冲小彗星往前跑
-- **天色随念稿进度变化**——白天→黄昏→黑夜，陪你走完一段稿子
 - **12 种柔和字色**——念久了眼睛不累
 
 ---
@@ -94,7 +93,7 @@ LumiCue 是一个小小的提词器。你录视频、做直播，眼前有稿子
 按住窗口右下角直接拖——窗口自由缩放，字号自动跟着适配。跟调一个普通窗口一样顺手。
 
 ### 🎨 字体颜色格式随便换
-- 12 种系统字体随意切
+- 系统字体任选——点「字体」按钮，装了的字体都能用
 - 12 种文字颜色，点一下换一个，即时生效
 - 字号独立微调（A− / A+），不跟窗口大小绑定
 
@@ -125,6 +124,8 @@ LumiCue 是一个小小的提词器。你录视频、做直播，眼前有稿子
 | 回退一句 | `↑` |
 | 前进一句 | `↓` |
 | 粘贴稿本 | `⌘V` |
+| 跳到某一句 | 双击那一行 |
+| 更多选项（导入txt/速度/字号/字色） | 右键点窗口 |
 
 ---
 
@@ -235,7 +236,6 @@ The Chinese name 灵光提示 (líng guāng tí shì) means "a spark of a cue" �
 - **Glassmorphism** — a frosted, semi-transparent backdrop; your desktop or video preview shows through, but the text stays crisp
 - **Animated rainbow border** — indigo → violet → pink, gently flowing around the edges
 - **A glowing progress bar** with a pulsing comet head that races ahead as you speak
-- **Dynamic sky** — the background shifts from day → dusk → night as you progress through your script
 - **12 soft text colors** — readable, easy on the eyes, never harsh
 
 ---
@@ -255,7 +255,7 @@ It is also tuned for full-screen presentations: keep your slides full-screen, an
 Grab the bottom-right corner of the window and drag — the window scales freely, and the text size adapts with it.
 
 ### 🎨 Font style & color at your fingertips
-- 12 system fonts to switch between
+- Any installed system font — pick from the Font menu
 - 12 text colors — tap to cycle, each change applies instantly
 - Font size fine-tuning (A− / A+) independent of window size
 
@@ -286,6 +286,8 @@ One button switches all control labels between Chinese and English. The button s
 | Step back one line | `↑` |
 | Step forward one line | `↓` |
 | Paste script | `⌘V` |
+| Jump to a line | Double-click it |
+| More options (import txt / speed / font / color) | Right-click the window |
 
 ---
 

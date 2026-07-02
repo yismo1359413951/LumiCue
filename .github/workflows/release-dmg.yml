@@ -26,6 +26,12 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
+      - name: Show Xcode project info
+        working-directory: lumicue
+        run: |
+          xcodebuild -version
+          xcodebuild -list -project LumiCue.xcodeproj
+
       - name: Resolve version
         id: version
         shell: bash

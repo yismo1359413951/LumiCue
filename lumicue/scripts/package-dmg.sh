@@ -5,6 +5,7 @@ APP_NAME="LumiCue"
 SCHEME="${SCHEME:-LumiCue}"
 PROJECT="${PROJECT:-LumiCue.xcodeproj}"
 CONFIGURATION="${CONFIGURATION:-Release}"
+DESTINATION="${DESTINATION:-generic/platform=macOS}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${BUILD_DIR:-$ROOT_DIR/build}"
@@ -21,9 +22,11 @@ if [[ -z "$VERSION" ]]; then
       -project "$ROOT_DIR/$PROJECT" \
       -scheme "$SCHEME" \
       -configuration "$CONFIGURATION" \
+      -destination "$DESTINATION" \
       -derivedDataPath "$DERIVED_DATA_PATH" \
       -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_PATH" \
       -packageCachePath "$PACKAGE_CACHE_PATH" \
+      -disableAutomaticPackageResolution \
       -showBuildSettings 2>/dev/null \
       | awk '/MARKETING_VERSION/ { print $3; exit }' \
       || true
@@ -52,9 +55,11 @@ HOME="$HOME_OVERRIDE" xcodebuild \
   -project "$ROOT_DIR/$PROJECT" \
   -scheme "$SCHEME" \
   -configuration "$CONFIGURATION" \
+  -destination "$DESTINATION" \
   -derivedDataPath "$DERIVED_DATA_PATH" \
   -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_PATH" \
   -packageCachePath "$PACKAGE_CACHE_PATH" \
+  -disableAutomaticPackageResolution \
   CODE_SIGNING_ALLOWED="${CODE_SIGNING_ALLOWED:-NO}" \
   build
 

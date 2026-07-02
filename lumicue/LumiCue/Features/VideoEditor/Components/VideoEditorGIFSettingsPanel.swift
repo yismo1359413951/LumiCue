@@ -32,7 +32,7 @@ private enum VideoEditorGIFInspectorTab: CaseIterable, Identifiable {
     }
   }
 
-  func summary(state: VideoEditorState) -> String {
+  @MainActor func summary(state: VideoEditorState) -> String {
     switch self {
     case .dimensions:
       let size = state.exportSettings.exportSize(from: state.naturalSize)

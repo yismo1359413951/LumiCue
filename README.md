@@ -112,9 +112,6 @@ LumiCue 是一个小小的提词器。你录视频、做直播，眼前有稿子
 - 右键菜单导入 `.txt` 文件
 - 自动清掉所有看不见的空格（零宽空格、全角空格、NBSP……全删干净），标点和换行保留
 
-### 🎤 语音跟随（实验功能）
-内置离线语音识别——数据不出你的电脑。你开口念，字幕跟着往下走。
-
 ### 🌐 中英一键切换
 控制条一个按钮切换所有按钮语言。按钮显示的是**对面的语言**——中文界面显示"EN"，英文界面显示"中"。
 
@@ -146,20 +143,6 @@ open Snapzy.xcodeproj
 3. 提词器窗口立即弹出——就这样
 
 > 为什么 Xcode 里还叫 **Snapzy**？因为 LumiCue 是从 Snapzy 里拆出提词器做出来的，内部 Xcode 项目 / scheme 暂时还保留这个名字。`snapzy/` 文件夹是现在这个 App 的真正源码，不是多余垃圾；除非你要做一次完整改名，否则不要直接删。
-
----
-
-## 👻 已知问题：字幕重影
-
-滚动时，文字可能有轻微的重影/双像——高速滚动或低刷新率外接显示器上更明显。
-
-大概率是 `CATextLayer` 合成和毛玻璃 `NSVisualEffectView` 底层在渲染管线里的交互问题。
-
-**欢迎 PR！** 一些值得尝试的方向：
-- 降低毛玻璃底层更新频率
-- 文字渲染切到 `NSTextField` 或带 `drawsAsynchronously` 的 `CALayer`
-- 帧同步的 `CATransaction` flush
-- `CVDisplayLink` 对齐刷新的滚动
 
 ---
 
@@ -196,6 +179,19 @@ BSD 3-Clause License。详见 [LICENSE](LICENSE)。
 
 ---
 
+## 📥 Download
+
+| Your Mac | Download |
+|---|---|
+| **Apple Silicon** (M1/M2/M3/M4, 2020 or later) | [LumiCue-v1.25.0-AppleSilicon.zip](https://github.com/yismo1359413951/LumiCue/releases/download/v1.25.0/LumiCue-v1.25.0-AppleSilicon.zip) |
+| **Intel** (older Macs) | [LumiCue-v1.25.0-Intel.zip](https://github.com/yismo1359413951/LumiCue/releases/download/v1.25.0/LumiCue-v1.25.0-Intel.zip) |
+
+> 🧭 Not sure which chip? Apple menu ** → About This Mac**: "Apple M…" = Apple Silicon; "Intel" = Intel.
+> 🔓 **First launch**: drag LumiCue into Applications, then **right-click → Open** (free app without paid signing; a plain double-click gets blocked by macOS).
+
+---
+
+
 ## About
 
 LumiCue is a tiny teleprompter for when you're on camera. You're recording a video or livestreaming — you have a script, but you don't want the audience to see it. LumiCue floats as a semi-transparent glass bubble above your screen. You read from it. They never know.
@@ -204,10 +200,19 @@ Close the window, the app quits. No menu bar clutter. No status icon. Just a qui
 
 ---
 
-## ✅ Latest update: v1.24.1
+## ✅ Latest update: v1.25.0
 
-- **Presentation-safe floating window** — LumiCue now stays above full-screen PowerPoint / presentation spaces, so your cue window does not disappear behind your slides.
-- **Draggable pill progress** — when the window is collapsed into Pill mode, the mini progress bar can now be clicked and dragged too. It jumps through the script just like the full-size progress bar.
+- **Native Apple Silicon (M1–M4) & Intel** — removed the Intel-only beauty engine; the launch crash on Apple Silicon Macs is gone for good.
+- **Remembers everything** — script, speed, font size, color, font, window position. Quit and reopen exactly where you left off.
+- **Ghosting fixed** — stale text no longer lingers as offset shadows.
+- **English renders properly** — words keep their spaces, natural letter spacing (Chinese stays compact).
+- **Time remaining** — bottom-left shows how long is left at the current speed.
+- **Double-click any line** to jump straight to it.
+- **Auto-resume after seeking** — playback continues 1 s after you release the progress bar.
+- **Stops at the end** — no surprise loop; press Space to start over.
+- **Better pill mode** — A-/A+ font buttons and a draggable progress bar when collapsed.
+- **Mistap protection** — confirms before quitting (your script is auto-saved anyway).
+- **Presentation-safe floating window** — stays above full-screen PowerPoint / Keynote.
 
 ---
 
@@ -268,9 +273,6 @@ Pause anytime — a rescue panel pops up:
 - Import `.txt` files from the right-click menu
 - Auto-strips invisible spaces (zero-width, fullwidth, NBSP…) — keeps punctuation and line breaks intact
 
-### 🎤 Voice following (experimental)
-Built-in on-device speech recognition — your words stay on your machine. Speak, and the text follows along.
-
 ### 🌐 CN / EN toggle
 One button switches all control labels between Chinese and English. The button shows the *other* language — "EN" on the Chinese UI, "中" on the English one.
 
@@ -302,20 +304,6 @@ open Snapzy.xcodeproj
 3. The teleprompter window opens — that's it
 
 > Why does Xcode still say **Snapzy**? LumiCue started as a focused fork of Snapzy, and the internal Xcode project / scheme still keeps that name for now. The `snapzy/` folder is the actual app source, not a leftover file. Do not delete it unless you are intentionally renaming the whole project.
-
----
-
-## 👻 Known issue: text ghosting
-
-When scrolling, you may notice a faint double-image or ghosting on the text — more visible at high speeds or on lower-refresh external displays.
-
-Likely `CATextLayer` compositing interacting with the frosted-glass `NSVisualEffectView` backdrop.
-
-**PRs welcome!** Some directions to explore:
-- Lower the backdrop update frequency
-- Switch to `NSTextField` or `CALayer` with `drawsAsynchronously`
-- Frame-synchronized `CATransaction` flushing
-- `CVDisplayLink`-aligned scrolling
 
 ---
 

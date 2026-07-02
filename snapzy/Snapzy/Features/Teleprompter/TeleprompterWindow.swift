@@ -1096,17 +1096,13 @@ final class TeleprompterWindow: NSWindow {
 
   private func setupRescue() {
     rescuePanel = NSView()
-    rescuePanel.wantsLayer = true
-    rescuePanel.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.30).cgColor
-    rescuePanel.layer?.cornerRadius = 10
+    rescuePanel.wantsLayer = true   // 无底板: 三个按钮各自带深色药丸底, 不再垫整块黑长方形
     rescuePanel.isHidden = true
     func mk(_ t: String, _ s: Selector) -> NSButton {
       let b = NSButton(title: t, target: self, action: s)
       b.isBordered = false; b.contentTintColor = .white
       b.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
-      b.wantsLayer = true
-      b.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.18).cgColor
-      b.layer?.cornerRadius = 7
+      b.wantsLayer = true   // 无底色: 只留白字, 不要任何黑块
       return b
     }
     retreatButton = mk("← 退1句", #selector(rescueRetreat))

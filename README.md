@@ -19,8 +19,8 @@
 
 | 你的 Mac 芯片 Your chip | 下载 Download |
 |---|---|
-| **Apple 芯片** M1 / M2 / M3 / M4 (2020 年后) | [LumiCue-v1.25.0-AppleSilicon.zip](https://github.com/yismo1359413951/LumiCue/releases/download/v1.25.0/LumiCue-v1.25.0-AppleSilicon.zip) |
-| **Intel 芯片** (较老的 Mac) | [LumiCue-v1.25.0-Intel.zip](https://github.com/yismo1359413951/LumiCue/releases/download/v1.25.0/LumiCue-v1.25.0-Intel.zip) |
+| **Apple 芯片** M1 / M2 / M3 / M4 (2020 年后) | [LumiCue-v1.25.0-AppleSilicon.zip](https://github.com/yismo1359413951/LumiCue/raw/master/downloads/LumiCue-v1.25.0-AppleSilicon.zip) |
+| **Intel 芯片** (较老的 Mac) | [LumiCue-v1.25.0-Intel.zip](https://github.com/yismo1359413951/LumiCue/raw/master/downloads/LumiCue-v1.25.0-Intel.zip) |
 
 > 🧭 不确定是哪种芯片？点屏幕左上角 ** → 关于本机**：写 "Apple M…" 就选 Apple 芯片版；写 "Intel" 就选 Intel 版。
 > Not sure? Apple menu **, then About This Mac**: "Apple M…" = Apple Silicon; "Intel" = Intel.
@@ -184,8 +184,8 @@ BSD 3-Clause License。详见 [LICENSE](LICENSE)。
 
 | Your Mac | Download |
 |---|---|
-| **Apple Silicon** (M1/M2/M3/M4, 2020 or later) | [LumiCue-v1.25.0-AppleSilicon.zip](https://github.com/yismo1359413951/LumiCue/releases/download/v1.25.0/LumiCue-v1.25.0-AppleSilicon.zip) |
-| **Intel** (older Macs) | [LumiCue-v1.25.0-Intel.zip](https://github.com/yismo1359413951/LumiCue/releases/download/v1.25.0/LumiCue-v1.25.0-Intel.zip) |
+| **Apple Silicon** (M1/M2/M3/M4, 2020 or later) | [LumiCue-v1.25.0-AppleSilicon.zip](https://github.com/yismo1359413951/LumiCue/raw/master/downloads/LumiCue-v1.25.0-AppleSilicon.zip) |
+| **Intel** (older Macs) | [LumiCue-v1.25.0-Intel.zip](https://github.com/yismo1359413951/LumiCue/raw/master/downloads/LumiCue-v1.25.0-Intel.zip) |
 
 > 🧭 Not sure which chip? Apple menu ** → About This Mac**: "Apple M…" = Apple Silicon; "Intel" = Intel.
 > 🔓 **First launch**: drag LumiCue into Applications, then **right-click → Open** (free app without paid signing; a plain double-click gets blocked by macOS).

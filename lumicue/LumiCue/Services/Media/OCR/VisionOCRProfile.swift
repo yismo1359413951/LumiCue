@@ -18,6 +18,7 @@ struct VisionOCRProfile {
   let minimumAcceptableConfidence: Float
   let prefersCJKContent: Bool
 
+  @MainActor
   static func resolve(for request: OCRRequest) -> VisionOCRProfile {
     if request.contentType == .code {
       return .code

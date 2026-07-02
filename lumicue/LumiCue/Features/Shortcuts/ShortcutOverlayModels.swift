@@ -28,6 +28,7 @@ struct ShortcutOverlayItem: Identifiable {
 }
 
 enum ShortcutOverlayContentBuilder {
+  @MainActor
   static func buildSections() -> [ShortcutOverlaySection] {
     let keyboard = KeyboardShortcutManager.shared
     let annotate = AnnotateShortcutManager.shared

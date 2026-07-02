@@ -15,6 +15,7 @@ struct MockupExporter {
     // MARK: - Render Final Image
 
     /// Renders the mockup to an NSImage at specified scale
+    @MainActor
     static func renderFinalImage(state: MockupState, scale: CGFloat = 2.0) -> NSImage? {
         guard state.sourceImage != nil else { return nil }
 

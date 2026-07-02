@@ -20,6 +20,7 @@ enum AnnotationFactory {
     var activeAnnotationBounds: CGRect
   }
 
+  @MainActor
   static func createAnnotation(
     tool: AnnotationToolType,
     from start: CGPoint,

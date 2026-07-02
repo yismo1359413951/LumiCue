@@ -1,0 +1,59 @@
+name: Build DMG
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version number, for example 1.0.0"
+        required: false
+        default: "1.0.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build-dmg:
+    name: Build LumiCue DMG
+    runs-on: macos-15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Build DMG
+        working-directory: lumicue
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          CODE_SIGNING_ALLOWED: "NO"
+        run: ./scripts/package-dmg.sh
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LumiCue-v${{ steps.version.outputs.version }}.dmg
+          path: lumicue/build/LumiCue-v${{ steps.version.outputs.version }}.dmg
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: lumicue/build/LumiCue-v${{ steps.version.outputs.version }}.dmg
+          generate_release_notes: true

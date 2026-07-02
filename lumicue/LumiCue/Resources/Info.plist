@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIconFile</key>
+	<string>LumiCueIcon</string>
+	<key>CFBundleName</key>
+	<string>$(LUMICUE_BUNDLE_NAME)</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Image</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.png</string>
+				<string>public.jpeg</string>
+				<string>public.heic</string>
+				<string>public.heif</string>
+				<string>public.tiff</string>
+				<string>com.compuserve.gif</string>
+				<string>org.webmproject.webp</string>
+				<string>public.bmp</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.yismo.lumicue</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>lumicue</string>
+			</array>
+		</dict>
+	</array>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>LumiCue needs microphone access to record audio with your screen recordings.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Shotlit needs camera access to show your face bubble in screen recordings.</string>
+	<key>NSScreenCaptureUsageDescription</key>
+	<string>LumiCue needs screen recording permission to capture screenshots and record your screen.</string>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/yismo1359413951/LumiCue/master/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>zcoJ90nh+SEFg6ZEkb9fwQCEK51vSIRwyn6tOsQisL0=</string>
+	<key>SUEnableInstallerLauncherService</key>
+	<true/>
+</dict>
+</plist>

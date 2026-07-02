@@ -61,6 +61,7 @@ HOME="$HOME_OVERRIDE" xcodebuild \
   -packageCachePath "$PACKAGE_CACHE_PATH" \
   -disableAutomaticPackageResolution \
   CODE_SIGNING_ALLOWED="${CODE_SIGNING_ALLOWED:-NO}" \
+  SWIFT_STRICT_CONCURRENCY=minimal \
   build
 
 [[ -d "$APP_PATH" ]] || fail "Built app not found: $APP_PATH"

@@ -1,0 +1,13 @@
+# Personal notes and working documents
+*复盘*.md
+*调研*.md
+*报告*.md
+*个人*.md
+*task*.md
+*Task*.md
+*report*.md
+*Report*.md
+
+# Local build output
+build/
+*.profraw

@@ -113,14 +113,32 @@ LumiCue 是一个小小的提词器。你录视频、做直播，眼前有稿子
 ```bash
 git clone <仓库地址>
 cd LumiCue
-open Snapzy.xcodeproj
+open lumicue/LumiCue.xcodeproj
 ```
 
-1. 选择 **Snapzy** scheme
+1. 选择 **LumiCue** scheme
 2. 编译（⌘B）并运行（⌘R）
 3. 提词器窗口立即弹出——就这样
 
-> 为什么 Xcode 里还叫 **Snapzy**？因为 LumiCue 是从 Snapzy 里拆出提词器做出来的，内部 Xcode 项目 / scheme 暂时还保留这个名字。`snapzy/` 文件夹是现在这个 App 的真正源码，不是多余垃圾；除非你要做一次完整改名，否则不要直接删。
+### 打包 DMG
+
+```bash
+cd lumicue
+./scripts/package-dmg.sh
+```
+
+生成的安装包会放在 `lumicue/build/` 目录下，例如 `LumiCue-v1.0.0.dmg`。
+
+如果没有 Apple Developer 签名证书，这个 DMG 适合自己测试或小范围分发；公开下载版本建议再做签名和公证。
+
+### 发布下载版
+
+推送版本标签后，GitHub Actions 会自动生成 DMG 并上传到 Releases：
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
 
 ---
 
@@ -135,12 +153,6 @@ open Snapzy.xcodeproj
 - 文字渲染切到 `NSTextField` 或带 `drawsAsynchronously` 的 `CALayer`
 - 帧同步的 `CATransaction` flush
 - `CVDisplayLink` 对齐刷新的滚动
-
----
-
-## 🙏 致谢
-
-LumiCue 是基于 **[Snapzy](https://github.com/duongductrong/Snapzy)** by [duongductrong](https://github.com/duongductrong) 拆出来的专用提词器版本。原始版权和 BSD 3-Clause 许可声明会继续保留。
 
 ---
 

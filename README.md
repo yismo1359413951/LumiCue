@@ -113,14 +113,32 @@ LumiCue 是一个小小的提词器。你录视频、做直播，眼前有稿子
 ```bash
 git clone <仓库地址>
 cd LumiCue
-open Snapzy.xcodeproj
+open lumicue/LumiCue.xcodeproj
 ```
 
-1. 选择 **Snapzy** scheme
+1. 选择 **LumiCue** scheme
 2. 编译（⌘B）并运行（⌘R）
 3. 提词器窗口立即弹出——就这样
 
-> 为什么 Xcode 里还叫 **Snapzy**？因为 LumiCue 是从 Snapzy 里拆出提词器做出来的，内部 Xcode 项目 / scheme 暂时还保留这个名字。`snapzy/` 文件夹是现在这个 App 的真正源码，不是多余垃圾；除非你要做一次完整改名，否则不要直接删。
+### 打包 DMG
+
+```bash
+cd lumicue
+./scripts/package-dmg.sh
+```
+
+生成的安装包会放在 `lumicue/build/` 目录下，例如 `LumiCue-v1.0.0.dmg`。
+
+如果没有 Apple Developer 签名证书，这个 DMG 适合自己测试或小范围分发；公开下载版本建议再做签名和公证。
+
+### 发布下载版
+
+推送版本标签后，GitHub Actions 会自动生成 DMG 并上传到 Releases：
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
 
 ---
 
@@ -135,12 +153,6 @@ open Snapzy.xcodeproj
 - 文字渲染切到 `NSTextField` 或带 `drawsAsynchronously` 的 `CALayer`
 - 帧同步的 `CATransaction` flush
 - `CVDisplayLink` 对齐刷新的滚动
-
----
-
-## 🙏 致谢
-
-LumiCue 是基于 **[Snapzy](https://github.com/duongductrong/Snapzy)** by [duongductrong](https://github.com/duongductrong) 拆出来的专用提词器版本。原始版权和 BSD 3-Clause 许可声明会继续保留。
 
 ---
 
@@ -269,14 +281,32 @@ One button switches all control labels between Chinese and English. The button s
 ```bash
 git clone <repo-url>
 cd LumiCue
-open Snapzy.xcodeproj
+open lumicue/LumiCue.xcodeproj
 ```
 
-1. Select the **Snapzy** scheme
+1. Select the **LumiCue** scheme
 2. Build (⌘B) and Run (⌘R)
 3. The teleprompter window opens — that's it
 
-> Why does Xcode still say **Snapzy**? LumiCue started as a focused fork of Snapzy, and the internal Xcode project / scheme still keeps that name for now. The `snapzy/` folder is the actual app source, not a leftover file. Do not delete it unless you are intentionally renaming the whole project.
+### Package DMG
+
+```bash
+cd lumicue
+./scripts/package-dmg.sh
+```
+
+The installer is written to `lumicue/build/`, for example `LumiCue-v1.0.0.dmg`.
+
+Without an Apple Developer signing certificate, this DMG is best for local testing or small private distribution. Public releases should be signed and notarized.
+
+### Publish A Downloadable Build
+
+Push a version tag and GitHub Actions will build the DMG and attach it to Releases:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
 
 ---
 
@@ -291,12 +321,6 @@ Likely `CATextLayer` compositing interacting with the frosted-glass `NSVisualEff
 - Switch to `NSTextField` or `CALayer` with `drawsAsynchronously`
 - Frame-synchronized `CATransaction` flushing
 - `CVDisplayLink`-aligned scrolling
-
----
-
-## 🙏 Credits
-
-LumiCue is a focused teleprompter fork of **[Snapzy](https://github.com/duongductrong/Snapzy)** by [duongductrong](https://github.com/duongductrong). Original copyright and BSD 3-Clause notices are retained.
 
 ---
 

@@ -36,6 +36,7 @@ private enum VideoEditorExportInspectorTab: CaseIterable, Identifiable {
     }
   }
 
+  @MainActor
   func summary(state: VideoEditorState) -> String {
     switch self {
     case .quality:

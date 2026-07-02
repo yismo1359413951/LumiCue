@@ -27,6 +27,7 @@ private struct AnnotateSidebarSnapshot: Equatable {
   let isSelectedCanvasPresetDirty: Bool
   let defaultCanvasPresetId: UUID?
 
+  @MainActor
   init(state: AnnotateState) {
     editorMode = state.editorMode
     backgroundStyle = state.backgroundStyle

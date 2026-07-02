@@ -272,6 +272,7 @@ final class AnnotateDragFilePromiseProvider: NSFilePromiseProvider {
 
   // MARK: - Broad Compatibility: Also Provide File URL
 
+  @MainActor
   override func writableTypes(for pasteboard: NSPasteboard) -> [NSPasteboard.PasteboardType] {
     var types = super.writableTypes(for: pasteboard)
     // Also advertise as a file URL so non-promise apps can accept the drag.
@@ -293,6 +294,7 @@ final class AnnotateDragFilePromiseProvider: NSFilePromiseProvider {
     return super.writingOptions(forType: type, pasteboard: pasteboard)
   }
 
+  @MainActor
   override func pasteboardPropertyList(
     forType type: NSPasteboard.PasteboardType
   ) -> Any? {
@@ -491,6 +493,7 @@ private struct DragFallbackSignature: Equatable {
   let annotations: [String]
   let embeddedAssets: [String]
 
+  @MainActor
   init?(state: AnnotateState) {
     guard state.hasImage else { return nil }
 

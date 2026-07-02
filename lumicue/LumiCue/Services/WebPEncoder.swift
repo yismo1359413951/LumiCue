@@ -37,6 +37,7 @@ enum WebPEncoderService {
   ///   - image: The source CGImage
   ///   - quality: Compression quality (0.0–1.0, default 0.85)
   /// - Returns: WebP data, or nil if encoding fails
+  @MainActor
   static func encode(_ image: CGImage, quality: CGFloat = 0.85) -> Data? {
     let width = image.width
     let height = image.height

@@ -294,6 +294,7 @@ final class AnnotateManager {
 }
 
 extension AnnotationSessionData {
+  @MainActor
   static func snapshot(from state: AnnotateState, originalImageData: Data) -> AnnotationSessionData {
     let cutoutSnapshot = state.cutoutSnapshot()
     return AnnotationSessionData(

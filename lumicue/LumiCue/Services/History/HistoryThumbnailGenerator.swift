@@ -252,6 +252,7 @@ final class HistoryThumbnailGenerator {
     return generatedThumbnail.image
   }
 
+  @MainActor
   private func generateImageThumbnail(for record: CaptureHistoryRecord, identity: ThumbnailCacheIdentity) -> GeneratedThumbnail? {
     let url = record.fileURL
     let scopedAccess = SandboxFileAccessManager.shared.beginAccessingURL(url)

@@ -11,6 +11,7 @@ import ServiceManagement
 struct LoginItemManager {
 
   /// Enable or disable launch at login
+  @MainActor
   static func setEnabled(_ enabled: Bool) {
     do {
       if enabled {

@@ -53,6 +53,7 @@ enum ClipboardHelper {
   /// the security-scoped handoff receivers need for sandboxed file reads.
   /// The extra URL/string representations live on the same pasteboard item and
   /// help Electron/WebView targets that inspect item-level fallback flavors.
+  @MainActor
   static func copyMediaFile(from url: URL) {
     DiagnosticLogger.shared.log(.info, .clipboard, "Copy media file", context: ["file": url.lastPathComponent])
     let fileAccess = SandboxFileAccessManager.shared.beginAccessingURL(url)
@@ -92,6 +93,7 @@ enum ClipboardHelper {
   ///
   /// - Important: Do NOT delete the file after calling this — the receiving app
   ///   needs it to exist at paste time.
+  @MainActor
   static func copyImage(from url: URL) {
     DiagnosticLogger.shared.log(.info, .clipboard, "Copy image from file", context: ["file": url.lastPathComponent])
     let fileAccess = SandboxFileAccessManager.shared.beginAccessingURL(url)
@@ -134,6 +136,7 @@ enum ClipboardHelper {
   /// then writing the file URL. This ensures the pasted result uses the correct format.
   ///
   /// Used by Annotate / Mockup copy where the image is rendered on-the-fly.
+  @MainActor
   static func copyImage(_ image: NSImage, format: ImageFormatOption? = nil) {
     DiagnosticLogger.shared.log(.info, .clipboard, "Copy rendered image", context: ["format": (format ?? currentFormat()).rawValue])
     let resolvedFormat = format ?? currentFormat()
